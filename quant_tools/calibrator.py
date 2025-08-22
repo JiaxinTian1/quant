@@ -78,6 +78,7 @@ class MinMaxCalibrator(BaseCalibrator):
         reshaped_tensor = self.reshaper.reshape(tensor)
         # current_min = reshaped_tensor.float().amin(dim=(-1), keepdim=True)
         # current_max = reshaped_tensor.float().amax(dim=(-1), keepdim=True)
+        # breakpoint()
         current_min, current_max = self._get_tensor_feature(reshaped_tensor)
 
         # 更新统计信息
@@ -88,7 +89,7 @@ class MinMaxCalibrator(BaseCalibrator):
 
         self.min = torch.min(self.min, current_min) if self.min is not None else current_min
         self.max = torch.max(self.max, current_max) if self.max is not None else current_max
-        breakpoint()
+        
 
     def compute_params(self) -> Dict[str, torch.Tensor]:
         """通过缩放器计算量化参数"""
@@ -115,6 +116,11 @@ class MinMaxCalibrator(BaseCalibrator):
             current_min = tensor.float().amin(dim=(-1), keepdim=True)
             current_max = tensor.float().amax(dim=(-1), keepdim=True)
         elif self.tensor_type == 'activation':
+            # 获取所有维度的索引
+            all_dims = tuple(range(tensor.dim()))
+            # 排除-2维度（倒数第二维）
+            dims_to_reduce = tuple(d for d in all_dims if d != tensor.dim() - 2)
+            breakpoint()
             current_min = tensor.amin(dim=(-1, 0, 1))
             current_max = tensor.amax(dim=(-1, 0, 1))
         return (current_min, current_max)

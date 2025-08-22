@@ -27,10 +27,10 @@ class ReshaperFactory():
 class ChannelReshaper(BaseReshaper):
     
     def reshape(self, tensor: torch.Tensor):
-        return tensor
+        return tensor.unsqueeze(-2)
     
     def unreshape(self, tensor: torch.Tensor):
-        return tensor
+        return tensor.squeeze(-2)
 
 class BlockReshaper(BaseReshaper):
     

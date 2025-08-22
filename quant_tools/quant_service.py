@@ -451,7 +451,7 @@ class StrategyParser:
 
     def _is_disabled(self, tensor_name: str) -> bool:
         """判断当前层是否被禁用"""
-        return any(fnmatch.fnmatch(tensor_name, pattern) for pattern in self.disable_patterns)
+        return any(pattern in tensor_name for pattern in self.disable_patterns)
 
     def _apply_local_overrides(self, tensor_name: str, strategy: Dict[str, Any]) -> None:
         """用局部配置覆盖全局配置"""

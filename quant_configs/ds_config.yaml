@@ -22,9 +22,10 @@ local:
       target_dtype: int4
       calibrator: minmax
       granularity: block
+      is_sym: True
 
 disable:
-  ["*lm_head*"]
+  ["lm_head", "mlp.gate"]
 
 max_layers_per_subgraph: 5
 

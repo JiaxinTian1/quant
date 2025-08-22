@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Tuple
-from .algo import AlgorithmFactory, BaseAlgorithm
 from .calibrator import CalibratorFactory
 from .hook import HookManager
 
