@@ -118,20 +118,15 @@ class LoadProcessor(BaseProcessor):
             model_path, 
             config = self.quant_service.config,
             torch_dtype="auto",
-            device_map="auto",
+            # device_map="auto",
             trust_remote_code=True,
-        )
+        ).cuda()
 
         self.quant_service.tokenizer = AutoTokenizer.from_pretrained(
             model_path,
             trust_remote_code=True
         )
         
-        # 3. 解析权重原始类型
-        self.quant_service.original_dtype = getattr(
-            self.quant_service.config, "torch_dtype", "float32")
-
-        print(f"权重原始类型: {self.quant_service.original_dtype}")
         
         self.post_process()
 
@@ -207,7 +202,7 @@ class InitProcessor(BaseProcessor):
                 truncation=True,
                 max_length=512,
                 return_tensors="pt"
-            )
+            ).to(self.quant_service.model.device)
             dataloader.append(inputs)
         
         return dataloader
@@ -321,7 +316,6 @@ class CalibrationProcessor(BaseProcessor):
     def _calibrate_subgraph(self, subgraph: List[str]):
         """校准单个子图：为每个层创建Algorithm实例并计算参数"""
         # 为子图中的每个层创建算法实例
-        layer_algorithms = {}  # {tensor_name: AlgorithmBase实例}
         for tensor_name in subgraph:
             strategy = self.quant_service.strategy_parser.get_strategy(
                 tensor_name, 
@@ -332,7 +326,7 @@ class CalibrationProcessor(BaseProcessor):
             # 创建量化器
             layer_path = ".".join(tensor_name.split(".")[:-1])
             layer = self._get_layer_by_path(layer_path)
-            print(f"原始权重设备: {layer.weight.device}")
+            # print(f"原始权重设备: {layer.weight.device}")
             quantizer = Quantizer(strategy, tensor_name)
             self.quant_service.layer_quantizers[tensor_name] = quantizer
             quantizer.process()
@@ -353,7 +347,7 @@ class CalibrationProcessor(BaseProcessor):
     def _run_calibration_forward(self):
         """运行校准数据，触发Hook收集激活值"""
         for batch in self.quant_service.dataloader:
-            batch = {k: v.to("cuda") for k, v in batch.items()}
+            batch = {k: v for k, v in batch.items()}
             with torch.no_grad():
                 self.quant_service.model(** batch)  # 触发前向传播
 
@@ -444,9 +438,10 @@ class StrategyParser:
                 "weight": deepcopy(self.global_cfg.get("weight", {})),
                 "activation": deepcopy(self.global_cfg.get("activation", {})),
                 "algorithm": deepcopy(self.global_cfg.get("algorithm", {})),
+                "quant_type": deepcopy(self.global_cfg.get("quant_type", {})),
             }
-            strategy["weight"]["original_dtype"] = original_dtype
-            strategy["activation"]["original_dtype"] = original_dtype
+            strategy["weight"]["original_dtype"] = self.quant_config["original_dtype"]
+            strategy["activation"]["original_dtype"] = self.quant_config["original_dtype"]
 
             # 应用局部配置覆盖
             self._apply_local_overrides(tensor_name, strategy)
@@ -461,7 +456,7 @@ class StrategyParser:
     def _apply_local_overrides(self, tensor_name: str, strategy: Dict[str, Any]) -> None:
         """用局部配置覆盖全局配置"""
         for pattern, local_settings in self.local_cfg.items():
-            if fnmatch.fnmatch(tensor_name, pattern):
+            if pattern in tensor_name:
                 if "weight" in local_settings:
                     strategy["weight"].update(local_settings["weight"])
                 if "activation" in local_settings:

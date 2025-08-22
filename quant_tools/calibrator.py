@@ -7,12 +7,10 @@ from .reshaper import ReshaperFactory
 
 class BaseCalibrator:
     """校准器基类"""
-    def __init__(self, sub_strategy):
+    def __init__(self, tensor_type, sub_strategy):
         self.sub_strategy = sub_strategy
-        self.granularity = sub_strategy["granularity"]
+        self.tensor_type = tensor_type
         self.stats = {}
-        self.scaler = ScalerFactory.create(sub_strategy)
-        self.reshaper = ReshaperFactory.create(sub_strategy.get("granularity", "channel"))
         self.enable = True
         self.initiated = False
 
@@ -35,21 +33,21 @@ class BaseCalibrator:
 class CalibratorFactory:
     """校准器工厂"""
     @staticmethod
-    def create(calibrator_type: str, sub_strategy: Dict) -> "BaseCalibrator":
+    def create(calibrator_type: str, tensor_type, sub_strategy: Dict) -> "BaseCalibrator":
         if calibrator_type == "minmax":
-            return MinMaxCalibrator(sub_strategy)
+            return MinMaxCalibrator(tensor_type, sub_strategy)
         elif calibrator_type == "histogram":
-            return HistogramCalibrator(sub_strategy)
+            return HistogramCalibrator(tensor_type, sub_strategy)
         elif calibrator_type == "gptq":
-            return GPTQCalibrator(sub_strategy)
+            return GPTQCalibrator(tensor_type, sub_strategy)
         else:
             raise ValueError(f"不支持的校准器类型: {calibrator_type}")
 
 
 class MinMaxCalibrator(BaseCalibrator):
     """MinMax校准器"""
-    def __init__(self, sub_strategy):
-        super().__init__(sub_strategy)
+    def __init__(self, tensor_type, sub_strategy):
+        super().__init__(tensor_type, sub_strategy)
         self.max = None
         self.min = None
     
@@ -58,15 +56,12 @@ class MinMaxCalibrator(BaseCalibrator):
 
     def initiate_calibrator(self, tensor):
         self.initiated = True
-        if self.granularity == "dynamic":
+        if not self.sub_strategy.get("enable", False):
             self.enable = False
+        if self.enable:
+            self.scaler = ScalerFactory.create(self.sub_strategy)
+            self.reshaper = ReshaperFactory.create(self.sub_strategy.get("granularity", "channel"))
             return
-        
-        # reshaped_tensor = self.reshaper.reshape(tensor)
-        # other_dims = reshaped_tensor.shape[:-1]
-        # other_dims = (*other_dims, 1)
-        # self.min = torch.full(other_dims, float("inf"), dtype=tensor.dtype)
-        # self.max = torch.full(other_dims, float("-inf"), dtype=tensor.dtype)
 
     def collect(self, tensor: torch.Tensor) -> None:  
         if not self.initiated:
@@ -81,8 +76,9 @@ class MinMaxCalibrator(BaseCalibrator):
         
         # 根据粒度收集统计信息
         reshaped_tensor = self.reshaper.reshape(tensor)
-        current_min = reshaped_tensor.amin(dim=(-1), keepdim=True)
-        current_max = reshaped_tensor.amax(dim=(-1), keepdim=True)
+        # current_min = reshaped_tensor.float().amin(dim=(-1), keepdim=True)
+        # current_max = reshaped_tensor.float().amax(dim=(-1), keepdim=True)
+        current_min, current_max = self._get_tensor_feature(reshaped_tensor)
 
         # 更新统计信息
 
@@ -92,6 +88,7 @@ class MinMaxCalibrator(BaseCalibrator):
 
         self.min = torch.min(self.min, current_min) if self.min is not None else current_min
         self.max = torch.max(self.max, current_max) if self.max is not None else current_max
+        breakpoint()
 
     def compute_params(self) -> Dict[str, torch.Tensor]:
         """通过缩放器计算量化参数"""
@@ -112,6 +109,15 @@ class MinMaxCalibrator(BaseCalibrator):
             tensor=reshaped_tensor,
         )
         return self.reshaper.unreshape(quant_weight)
+    
+    def _get_tensor_feature(self, tensor):
+        if self.tensor_type == 'weight':
+            current_min = tensor.float().amin(dim=(-1), keepdim=True)
+            current_max = tensor.float().amax(dim=(-1), keepdim=True)
+        elif self.tensor_type == 'activation':
+            current_min = tensor.amin(dim=(-1, 0, 1))
+            current_max = tensor.amax(dim=(-1, 0, 1))
+        return (current_min, current_max)
 
 class HistogramCalibrator(BaseCalibrator):
     """直方图校准器（简化实现）"""

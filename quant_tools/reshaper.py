@@ -20,6 +20,8 @@ class ReshaperFactory():
             return ChannelReshaper()
         elif granularity == 'block':
             return BlockReshaper()
+        elif granularity == 'group':
+            return GroupReshaper()
 
 
 class ChannelReshaper(BaseReshaper):
@@ -78,4 +80,45 @@ class BlockReshaper(BaseReshaper):
         unreshaped = unreshaped.permute(0, 2, 1, 3)
         # 3. 合并为原始形状 -> [H, W]
         unreshaped = unreshaped.reshape(H, W)
+        return unreshaped
+
+
+class GroupReshaper(BaseReshaper):
+    
+    def reshape(self, tensor: torch.Tensor, group_size: int = 128):
+        """
+        按最后一维进行分组reshape
+        
+        Args:
+            tensor: 输入张量 (形状 [..., D]，如 [2, 7, 4096])
+            group_size: 分组大小，如128
+        
+        Returns:
+            reshaped: 分组后的张量 (形状 [..., D//group_size, group_size]，如 [2, 7, 32, 128])
+        """
+        # 检查输入合法性
+        assert tensor.dim() >= 1, "输入至少要有1维"
+        D = tensor.shape[-1]
+        assert D % group_size == 0, f"最后一维大小{D}必须能被group_size{group_size}整除"
+
+        self.original_shape = tensor.shape
+        self.group_size = group_size
+        
+        # 计算新的形状
+        new_shape = list(tensor.shape[:-1]) + [D // group_size, group_size]
+        reshaped = tensor.reshape(new_shape)
+        return reshaped
+    
+    def unreshape(self, tensor: torch.Tensor):
+        """
+        将分组后的张量恢复为原始形状
+        
+        Args:
+            tensor: 分组后的张量 [..., groups, group_size]
+        
+        Returns:
+            unreshaped: 原始形状的张量 [..., D]
+        """
+        # 恢复原始形状
+        unreshaped = tensor.reshape(self.original_shape)
         return unreshaped

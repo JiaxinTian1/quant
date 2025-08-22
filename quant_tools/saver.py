@@ -19,6 +19,16 @@ class BaseSaver(ABC):
     @abstractmethod
     def save(self):
         pass
+    
+    def register_params(self, layer, name, tensor):
+        with torch.no_grad():
+            if not hasattr(layer, name):
+                layer.register_parameter(
+                    name, 
+                    torch.nn.Parameter(tensor, requires_grad=False)
+                )
+            else:
+                setattr(layer, name, torch.nn.Parameter(tensor, requires_grad=False))
 
 
 class SaverFactory:
@@ -41,6 +51,10 @@ class SglangFP8Saver(BaseSaver):
         self.quant_service.tokenizer.save_pretrained(self.save_path)
         self._save_quantization_config()
         self._save_hf_quant_config()
+    
+    def _register(self, layer):
+        self.register_params(layer, "weight", self.quant_weight)
+        self.register_params(layer, "weight_scale_inv", self.quant_info["weight"]["scale"].squeeze(-1))
 
     
     def _save_state_dict_with_index(self, state_dict: Dict[str, torch.Tensor]) -> dict:

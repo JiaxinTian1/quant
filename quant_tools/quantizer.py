@@ -28,8 +28,9 @@ class Quantizer():
     
     def calibrate(self, input_tensor, weight_tensor):
         print(self.tensor_name)
-        print(weight_tensor.dtype)
-        print(weight_tensor.device)
+        # print(self.strategy)
+        # print(weight_tensor.dtype)
+        # print(weight_tensor.device)
         self.weight_calibrator.collect(weight_tensor)
         self.act_calibrator.collect(input_tensor)
         self.quant_info = self.compute_params()
@@ -47,22 +48,16 @@ class Quantizer():
     
     
     def _register(self, layer):
-        self.register_params(layer, "weight", self.quant_weight)
-        self.register_params(layer, "weight_scale_inv", self.quant_info["weight"]["scale"].squeeze(-1))
-
+        if self.strategy["weight"]["enable"]:
+            self.register_params(layer, "weight", self.quant_weight)
+            self.register_params(layer, "weight_scale_inv", self.quant_info["weight"]["scale"].squeeze(-1))
+        if self.strategy["activation"]["enable"]:
+            self.register_params(layer, "input_scale", self.quant_info["activation"]["scale"].squeeze(-1))
 
         
     def _init_calibrator(self, param_type: str):
         """初始化校准器（需子类指定激活/权重使用的校准器类型）"""
         calibrator = CalibratorFactory.create(self.strategy.get(param_type).get("calibrator", "minmax"), \
+                                              param_type, \
                                               self.strategy.get(param_type))
         return calibrator
-    
-    def register_params(self, layer, name, tensor):
-        if not hasattr(layer, name):
-            layer.register_parameter(
-                name, 
-                torch.nn.Parameter(tensor, requires_grad=False)
-            )
-        else:
-            getattr(layer, name).data = tensor

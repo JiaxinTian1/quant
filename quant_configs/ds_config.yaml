@@ -1,0 +1,32 @@
+quant_type: int4
+quant_target: sglang
+original_dtype: fp8_e4m3
+
+global:
+  weight:
+    enable: false
+  activation:
+    enable: True
+    target_dtype: fp8_e4m3
+    calibrator: minmax
+    granularity: channel
+    is_sym: True
+  algorithm: 
+    minmax:
+      is_sym: True
+  
+local:
+  mlp.experts:
+    weight:
+      enable: True
+      target_dtype: int4
+      calibrator: minmax
+      granularity: block
+
+disable:
+  ["*lm_head*"]
+
+max_layers_per_subgraph: 5
+
+is_training: False
+
