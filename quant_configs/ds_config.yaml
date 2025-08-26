@@ -1,6 +1,6 @@
 quant_type: int4
 quant_target: sglang
-original_dtype: fp8_e4m3
+original_dtype: bf16
 
 global:
   weight:

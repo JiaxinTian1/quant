@@ -1,5 +1,6 @@
 
 import os
+import json
 
 from transformers import AutoModelForCausalLM
 from quant_tools.quant_service import QuantService
@@ -25,31 +26,31 @@ def main():
     # create_sample_config()
     
     # 2. 定义路径
-    # model_path = "/data/models/qwen2.5_7b"
-    model_path = "/data/models/Qwen3-30B-A3B-FP8"
+    model_path = "/data/models/Qwen3-8B"
+    # model_path = "/data/models/Qwen3-30B-A3B-FP8"
     # model_path = "/data01/models/Qwen3-235B-A22B"
     # model_path = "/data00/models/DeepSeek-R1"
     # model_path = "/data01/models/DeepSeek-V3-5layer"
     quant_config_path = "/data/tjx/quant/quant_configs/config.yaml"
-    quant_config_path = "/data/tjx/quant/quant_configs/ds_config.yaml"
+    # quant_config_path = "/data/tjx/quant/quant_configs/ds_config.yaml"
     save_dir = "./quantized_model"
+    calib_path = "/data/tjx/quant/datasets/calib.json"
+    calib_path = "/data/tjx/quant/datasets/test.json"
+
+
 
     # 3. 初始化量化服务
     quant_service = QuantService()
     
     # 4. 执行量化流程
     try:
+        with open(calib_path, 'r') as f:
+            calib_data = json.load(f)
         quant_service.run_pipeline(
             model_path=model_path,
             save_dir=save_dir,
             quant_config_path=quant_config_path,
-            calib_data=[
-                "这是一个量化校准样本",
-                "自然语言处理中的模型量化技术", 
-                "Transformer模型结构包含自注意力机制",
-                "量化可以显著减少模型大小并加速推理",
-                "深度学习模型的压缩是当前研究的热点"
-            ]
+            calib_data=calib_data
         )
         print("量化流程执行成功！")
     except Exception as e:

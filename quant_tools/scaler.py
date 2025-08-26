@@ -68,32 +68,28 @@ class SymmetricScaler(BaseScaler):
         
         # 避免除零
         scale = torch.clamp(scale, min=1e-8)
-        
-        # 对称量化offset恒为0
-        offset = torch.zeros_like(scale, dtype=torch.int32)
-        self.params = {"scale": scale, "offset": offset}
-
-        return self.params
+        return {"scale": scale}
     
-    def quantize(self, tensor: torch.Tensor):
-        scale = self.params["scale"]
-        offset = self.params["offset"]
-        tensor_quant = (tensor / scale) + offset
+    def quantize(self, tensor: torch.Tensor, params):
+        scale = params['scale']
+        tensor_quant = (tensor / scale)
         return torch.clamp(
             tensor_quant,
             min=self.q_min,
             max=self.q_max
         ).to(parse_dtype(self.target_dtype))
     
-    def dequantize(self, tensor: torch.Tensor):
-        scale = self.params["scale"]
-        offset = self.params["offset"]
-        tensor_quant = (tensor - offset) * scale
+    def dequantize(self, tensor: torch.Tensor, params):
+        scale = params['scale']
+        tensor_quant = (tensor) * scale
         return torch.clamp(
             tensor_quant,
             min=self.d_min,
             max=self.d_max
         ).to(parse_dtype(self.original_dtype))
+    
+    def dtype_transformer(self, tensor, scale):
+        pass
 
 
 class AsymmetricScaler(BaseScaler):
@@ -130,6 +126,7 @@ def parse_dtype(dtype_str: str) -> Tuple[torch.dtype, int]:
         "int16": torch.int16,
         "int32": torch.int32,
         "fp8_e4m3": torch.float8_e4m3fn,
+        "bf16": torch.bfloat16
     }
     dtype_str = dtype_str.lower()
     if dtype_str not in dtype_map:

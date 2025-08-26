@@ -6,6 +6,7 @@ import json
 import yaml
 import fnmatch
 import shutil
+from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer, AutoConfig, PretrainedConfig, AutoModelForCausalLM
 from copy import deepcopy
 from abc import ABC, abstractmethod
@@ -13,7 +14,7 @@ from safetensors.torch import save_file
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 
 
-from .quantizer import Quantizer
+from .quantizer import QuantizerFactory
 from .hook import HookManager
 from .saver import SaverFactory
 
@@ -243,7 +244,6 @@ class ConfigProcessor(BaseProcessor):
 class SubgraphProcessor(BaseProcessor):
     """子图划分处理器"""
     def process(self, **kwargs) -> None:
-        self.pre_process()
         # 过滤可量化层
         quantizable_layers = self._filter_quantizable_layers()
         
@@ -319,7 +319,6 @@ class CalibrationProcessor(BaseProcessor):
         for tensor_name in subgraph:
             strategy = self.quant_service.strategy_parser.get_strategy(
                 tensor_name, 
-                self.quant_service.original_dtype
                 )
             if not strategy["enabled"]:
                 continue
@@ -327,7 +326,7 @@ class CalibrationProcessor(BaseProcessor):
             layer_path = ".".join(tensor_name.split(".")[:-1])
             layer = self._get_layer_by_path(layer_path)
             # print(f"原始权重设备: {layer.weight.device}")
-            quantizer = Quantizer(strategy, tensor_name)
+            quantizer = QuantizerFactory.create(strategy)
             self.quant_service.layer_quantizers[tensor_name] = quantizer
             quantizer.process()
             test_device = torch.device("cuda")
@@ -346,14 +345,21 @@ class CalibrationProcessor(BaseProcessor):
 
     def _run_calibration_forward(self):
         """运行校准数据，触发Hook收集激活值"""
+        progress_bar = tqdm(
+            total=len(self.quant_service.dataloader),
+            desc="Calibrating",
+            dynamic_ncols=True
+        )
         for batch in self.quant_service.dataloader:
             batch = {k: v for k, v in batch.items()}
             with torch.no_grad():
                 self.quant_service.model(** batch)  # 触发前向传播
+            progress_bar.update(1)
+        progress_bar.close()
 
     def post_process(self):
         self.hook_manager.remove_all_hooks()
-        print(f"校准完成，收集{len(self.quant_service.quant_params)}层量化参数")
+        print(f"校准完成，收集{len(self.quant_service.layer_quantizers)}层量化参数")
 
 
 class QuantizationProcessor(BaseProcessor):
@@ -368,6 +374,11 @@ class QuantizationProcessor(BaseProcessor):
         self.post_process()
 
     def _quantize_subgraph(self, subgraph: List[str]):
+        progress_bar = tqdm(
+            total=len(subgraph),
+            desc="Quantizing",
+            dynamic_ncols=True
+        )
         for tensor_name in subgraph:
             if tensor_name not in self.quant_service.layer_quantizers:
                 continue
@@ -375,10 +386,11 @@ class QuantizationProcessor(BaseProcessor):
             layer = self._get_layer_by_path(layer_path)
             quantizer = self.quant_service.layer_quantizers[tensor_name]
             quantizer.quantize(layer)
-    
+            progress_bar.update(1)
+        progress_bar.close()
 
     def post_process(self):
-        print(f"量化完成，共替换 {len(self.quant_service.quantized_layers)} 个层")
+        print(f"量化完成")
     
     def _get_layer_by_path(self, layer_path: str) -> nn.Module:
         """根据路径获取层"""
@@ -423,7 +435,7 @@ class StrategyParser:
         self.disable_patterns = self.quant_config.get("disable", [])
         self._cache = {}
 
-    def get_strategy(self, tensor_name: str, original_dtype) -> Dict[str, Any]:
+    def get_strategy(self, tensor_name: str) -> Dict[str, Any]:
         """动态解析单个层的策略"""
         if tensor_name in self._cache:
             return self._cache[tensor_name]
@@ -435,10 +447,11 @@ class StrategyParser:
             # 基础策略（全局配置）
             strategy = {
                 "enabled": True,
+                "tensor_name": tensor_name,
+                "quant_type": self.quant_config.get("quant_type", "fp8"),
                 "weight": deepcopy(self.global_cfg.get("weight", {})),
                 "activation": deepcopy(self.global_cfg.get("activation", {})),
                 "algorithm": deepcopy(self.global_cfg.get("algorithm", {})),
-                "quant_type": deepcopy(self.global_cfg.get("quant_type", {})),
             }
             strategy["weight"]["original_dtype"] = self.quant_config["original_dtype"]
             strategy["activation"]["original_dtype"] = self.quant_config["original_dtype"]

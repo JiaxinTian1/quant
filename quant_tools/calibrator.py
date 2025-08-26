@@ -13,6 +13,9 @@ class BaseCalibrator:
         self.stats = {}
         self.enable = True
         self.initiated = False
+        self.collected = False
+        self.reshaper = None
+        self.scaler = None
 
     def collect(self, tensor: torch.Tensor, tensor_name: str) -> None:
         """收集张量统计信息"""
@@ -50,34 +53,25 @@ class MinMaxCalibrator(BaseCalibrator):
         super().__init__(tensor_type, sub_strategy)
         self.max = None
         self.min = None
+        self.initiate_calibrator()
     
     def to(self, device):
         pass
 
-    def initiate_calibrator(self, tensor):
+    def initiate_calibrator(self):
         self.initiated = True
         if not self.sub_strategy.get("enable", False):
             self.enable = False
         if self.enable:
             self.scaler = ScalerFactory.create(self.sub_strategy)
             self.reshaper = ReshaperFactory.create(self.sub_strategy.get("granularity", "channel"))
-            return
 
     def collect(self, tensor: torch.Tensor) -> None:  
-        if not self.initiated:
-            self.initiate_calibrator(tensor)
-        
         if not self.enable:
             return
 
-        if tensor.numel() == 0:
-            self.enable = False
-            return
-        
         # 根据粒度收集统计信息
         reshaped_tensor = self.reshaper.reshape(tensor)
-        # current_min = reshaped_tensor.float().amin(dim=(-1), keepdim=True)
-        # current_max = reshaped_tensor.float().amax(dim=(-1), keepdim=True)
         # breakpoint()
         current_min, current_max = self._get_tensor_feature(reshaped_tensor)
 
@@ -89,27 +83,41 @@ class MinMaxCalibrator(BaseCalibrator):
 
         self.min = torch.min(self.min, current_min) if self.min is not None else current_min
         self.max = torch.max(self.max, current_max) if self.max is not None else current_max
+        self.collected = True
         
-
     def compute_params(self) -> Dict[str, torch.Tensor]:
         """通过缩放器计算量化参数"""
         if self.enable:
-        # 调用缩放器计算参数（自动适配对称/非对称和数据类型）
+            # 调用缩放器计算参数（自动适配对称/非对称和数据类型）
+            if not self.collected:
+                return
             return self.scaler.compute_params({"min": self.min, "max": self.max})
     
-    def quantize(self, tensor):
+    def quantize(self, tensor, params):
         if not self.enable:
             return 
         # print(tensor.shape)
+        # print(self.reshaper)
         reshaped_tensor = self.reshaper.reshape(tensor)
         # print(reshaped_tensor.shape)
         # print(self.scaler.params["scale"].shape)
         # print(self.scaler.params["offset"].shape)
-
-        quant_weight = self.scaler.quantize(
-            tensor=reshaped_tensor,
-        )
+        
+        quant_weight = self.scaler.quantize(reshaped_tensor.float(), params)
         return self.reshaper.unreshape(quant_weight)
+    
+    def dequantize(self, tensor, params):
+        if not self.enable:
+            return 
+        # print(tensor.shape)
+        # print(self.reshaper)
+        reshaped_tensor = self.reshaper.reshape(tensor)
+        # print(reshaped_tensor.shape)
+        # print(self.scaler.params["scale"].shape)
+        # print(self.scaler.params["offset"].shape)
+        
+        dequant_weight = self.scaler.dequantize(reshaped_tensor.float(), params)
+        return self.reshaper.unreshape(dequant_weight)
     
     def _get_tensor_feature(self, tensor):
         if self.tensor_type == 'weight':
@@ -120,9 +128,9 @@ class MinMaxCalibrator(BaseCalibrator):
             all_dims = tuple(range(tensor.dim()))
             # 排除-2维度（倒数第二维）
             dims_to_reduce = tuple(d for d in all_dims if d != tensor.dim() - 2)
-            breakpoint()
-            current_min = tensor.amin(dim=(-1, 0, 1))
-            current_max = tensor.amax(dim=(-1, 0, 1))
+            current_min = tensor.amin(dim=dims_to_reduce)
+            current_max = tensor.amax(dim=dims_to_reduce)
+        # breakpoint()
         return (current_min, current_max)
 
 class HistogramCalibrator(BaseCalibrator):
