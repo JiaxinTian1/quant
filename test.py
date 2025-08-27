@@ -26,16 +26,17 @@ def main():
     # create_sample_config()
     
     # 2. 定义路径
-    model_path = "/data/models/Qwen3-8B"
-    # model_path = "/data/models/Qwen3-30B-A3B-FP8"
+    # model_path = "/data/models/Qwen3-8B"
+    # model_path = "/data/models/Qwen3-8B"
+    model_path = "/data/models/Qwen3-30B-A3B-FP8"
     # model_path = "/data01/models/Qwen3-235B-A22B"
     # model_path = "/data00/models/DeepSeek-R1"
     # model_path = "/data01/models/DeepSeek-V3-5layer"
     quant_config_path = "/data/tjx/quant/quant_configs/config.yaml"
-    # quant_config_path = "/data/tjx/quant/quant_configs/ds_config.yaml"
+    quant_config_path = "/data/tjx/quant/quant_configs/ds_config.yaml"
     save_dir = "./quantized_model"
     calib_path = "/data/tjx/quant/datasets/calib.json"
-    calib_path = "/data/tjx/quant/datasets/test.json"
+    # calib_path = "/data/tjx/quant/datasets/test.json"
 
 
 

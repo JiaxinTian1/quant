@@ -102,7 +102,6 @@ class GroupReshaper(BaseReshaper):
         assert D % group_size == 0, f"最后一维大小{D}必须能被group_size{group_size}整除"
 
         self.original_shape = tensor.shape
-        self.group_size = group_size
         
         # 计算新的形状
         new_shape = list(tensor.shape[:-1]) + [D // group_size, group_size]
@@ -120,5 +119,6 @@ class GroupReshaper(BaseReshaper):
             unreshaped: 原始形状的张量 [..., D]
         """
         # 恢复原始形状
-        unreshaped = tensor.reshape(self.original_shape)
+        target_shape = list(self.original_shape[:-1]) + [-1]
+        unreshaped = tensor.reshape(target_shape)
         return unreshaped

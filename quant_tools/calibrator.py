@@ -63,7 +63,11 @@ class MinMaxCalibrator(BaseCalibrator):
         if not self.sub_strategy.get("enable", False):
             self.enable = False
         if self.enable:
-            self.scaler = ScalerFactory.create(self.sub_strategy)
+            self.scaler = ScalerFactory.create(
+                self.sub_strategy.get("is_sym", True),
+                self.sub_strategy.get("original_dtype"),
+                self.sub_strategy.get("target_dtype"),
+                )
             self.reshaper = ReshaperFactory.create(self.sub_strategy.get("granularity", "channel"))
 
     def collect(self, tensor: torch.Tensor) -> None:  
@@ -127,9 +131,9 @@ class MinMaxCalibrator(BaseCalibrator):
             # 获取所有维度的索引
             all_dims = tuple(range(tensor.dim()))
             # 排除-2维度（倒数第二维）
-            dims_to_reduce = tuple(d for d in all_dims if d != tensor.dim() - 2)
-            current_min = tensor.amin(dim=dims_to_reduce)
-            current_max = tensor.amax(dim=dims_to_reduce)
+            dims_to_reduce = tuple(d for d in all_dims if d not in [tensor.dim() - 2, tensor.dim() - 1])
+            current_min = tensor.amin(dim=dims_to_reduce).amin(dim=(-1), keepdim=True)
+            current_max = tensor.amax(dim=dims_to_reduce).amax(dim=(-1), keepdim=True)
         # breakpoint()
         return (current_min, current_max)
 

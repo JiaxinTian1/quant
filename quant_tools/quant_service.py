@@ -256,7 +256,6 @@ class SubgraphProcessor(BaseProcessor):
             quantizable_layers[i:i+max_layers] 
             for i in range(0, len(quantizable_layers), max_layers)
         ]
-        print(self.quant_service.subgraphs)
         self.post_process()
 
     def _filter_quantizable_layers(self) -> List[str]:

@@ -3,6 +3,8 @@ import torch.nn as nn
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Tuple
 from .calibrator import CalibratorFactory
+from .scaler import ScalerFactory
+from .reshaper import ReshaperFactory
 from .hook import HookManager
 
 # --------------------------
@@ -61,7 +63,7 @@ class FP8INT4Quantizer(BaseQuantizer):
         super().__init__(strategy)
     
     def calibrate(self, input_tensor, weight_tensor):
-        print(self.tensor_name)
+        # print(self.tensor_name)
         # print(self.strategy)
         # print(weight_tensor.dtype)
         # print(weight_tensor.device)
@@ -69,15 +71,12 @@ class FP8INT4Quantizer(BaseQuantizer):
     
     def quantize(self, layer):
         # print(self.tensor_name)
-        tensor_to_quant = layer.weight.data
-        pre_quant_params = {"scale": layer.weight_scale_inv.data.unsqueeze(-1)}
-
-        # dequant
-        tensor_to_quant = self.weight_calibrator.dequantize(tensor_to_quant, pre_quant_params)
-        #
+        tensor_to_quant = self.dequant_fp8_tensor(layer)
         self.weight_calibrator.collect(tensor_to_quant)
         self.quant_info = self.compute_params()
-        self.quant_weight = self.weight_calibrator.quantize(tensor_to_quant, self.quant_info['weight'])
+        if self.strategy["weight"]["enable"]:
+            self.quant_weight = self.weight_calibrator.quantize(tensor_to_quant, self.quant_info['weight'])
+            self.quant_weight = self.pack_int4(self.quant_weight)
         self._register(layer)
     
     def compute_params(self):
@@ -87,6 +86,7 @@ class FP8INT4Quantizer(BaseQuantizer):
             "weight": self.weight_calibrator.compute_params()
         }
     
+    
     def _register(self, layer):
         if self.strategy["weight"]["enable"]:
             self.register_params(layer, "weight", self.quant_weight)
@@ -94,6 +94,26 @@ class FP8INT4Quantizer(BaseQuantizer):
         if self.strategy["activation"]["enable"]:
             if self.quant_info["activation"]:
                 self.register_params(layer, "input_scale", self.quant_info["activation"]["scale"].squeeze(-1))
+    
+    @staticmethod
+    def dequant_fp8_tensor(layer):
+        dequant_scaler = ScalerFactory.create(True, "bf16", "fp8_e4m3")
+        dequant_reshaper = ReshaperFactory.create('block')
+        tensor_to_dequant = layer.weight.data
+        pre_quant_params = {"scale": layer.weight_scale_inv.data.unsqueeze(-1)}
+        reshaped_tensor = dequant_reshaper.reshape(tensor_to_dequant)
+        dequant_weight = dequant_scaler.dequantize(reshaped_tensor.float(), pre_quant_params)
+        return dequant_reshaper.unreshape(dequant_weight)
+    
+    @staticmethod
+    def pack_int4(tensor):
+        pack_reshaper = ReshaperFactory.create('group')
+        tensor = pack_reshaper.reshape(tensor, 2)
+        low_bits = tensor[..., 1] & 0x0F
+        high_bits = tensor[..., 0] & 0x0F
+        packed_tensor = (high_bits << 4) | low_bits
+        return packed_tensor
+
 
 
 class BF16FP8Quantizer(BaseQuantizer):

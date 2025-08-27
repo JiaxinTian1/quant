@@ -151,9 +151,9 @@ class SglangSaver(BaseSaver):
     @staticmethod
     def _mapping_act_params(tensor_name):
         replacement_rules = {
-            'gate': 'w1',
-            'up': 'w3', 
-            'down': 'w2'
+            'gate_proj': 'w1',
+            'up_proj': 'w3', 
+            'down_proj': 'w2'
         }
         if 'experts' not in tensor_name:
             return tensor_name

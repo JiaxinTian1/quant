@@ -4,35 +4,19 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Tuple
 
 
-TYPE_RANGE = {
-    # 有符号整数类型
-    ("int4", True): (-8, 7),
-    ("int8", True): (-128, 127),
-    ("fp8_e4m3", True): (-448, 448), 
-    ("bf16", True): (-128, 127),
-    # 无符号整数类型（较少用于量化，但可扩展）
-    ("int4", False): (0, 15),
-    ("int8", False): (0, 255),
-    
-}
-
-
 class BaseScaler(ABC):
     """缩放器基类，定义量化参数计算接口"""
-    def __init__(self, sub_strategy: Dict):
-        """
-        """
-        self.is_sym = sub_strategy["is_sym"]
-        self.original_dtype = sub_strategy["original_dtype"]
-        self.target_dtype = sub_strategy["target_dtype"]
-        # 从字典获取量化范围（确保类型存在）
-        if (self.target_dtype, self.is_sym) not in TYPE_RANGE:
-            raise ValueError(f"不支持的数据类型: {self.target_dtype} (对称: {self.is_sym})")
-        self.q_min, self.q_max = TYPE_RANGE[(self.target_dtype, self.is_sym)]
-        self.d_min, self.d_max = TYPE_RANGE[(self.original_dtype, True)]
         
     @abstractmethod
     def compute_params(self, stats: Dict) -> Dict:
+        pass
+    
+    @abstractmethod
+    def quantize(self, tensor: torch.Tensor, params: Dict) -> torch.Tensor:
+        pass
+    
+    @abstractmethod
+    def dequantize(self, tensor: torch.Tensor, params: Dict) -> torch.Tensor:
         pass
 
 
@@ -42,22 +26,33 @@ class BaseScaler(ABC):
 class ScalerFactory:
     """缩放器工厂"""
     @staticmethod
-    def create(sub_strategy) -> "BaseScaler":
-        if sub_strategy.get("is_sym", True):
-            return SymmetricScaler(sub_strategy)
+    def create(is_sym, original_dtype, target_dtype) -> "BaseScaler":
+        if is_sym:
+            return SymmetricScaler(original_dtype, target_dtype)
         else:
-            return AsymmetricScaler(sub_strategy)
+            return AsymmetricScaler(original_dtype, target_dtype)
 
 
 class SymmetricScaler(BaseScaler):
     """对称缩放器：适用于所有对称量化场景（支持int4/int8/int16等）"""
+    TYPE_RANGE = {
+        # 有符号整数类型
+        "int4": (-8, 7),
+        "int8": (-128, 127),
+        "fp8_e4m3": (-448, 448), 
+        "bf16": (-128, 127),
+    }
+
+    def __init__(self, original_dtype, target_dtype):
+        self.original_dtype = original_dtype
+        self.target_dtype = target_dtype
+        self.d_min, self.d_max = self.TYPE_RANGE[original_dtype]
+        self.q_min, self.q_max = self.TYPE_RANGE[target_dtype]
 
     def compute_params(self, stats: Dict) -> Dict:
         min_val = stats["min"]
         max_val = stats["max"]
 
-        
-        
         # 对称量化取绝对值最大者作为动态范围
         max_abs = torch.max(torch.abs(min_val), torch.abs(max_val))
         
@@ -88,12 +83,21 @@ class SymmetricScaler(BaseScaler):
             max=self.d_max
         ).to(parse_dtype(self.original_dtype))
     
-    def dtype_transformer(self, tensor, scale):
-        pass
 
 
 class AsymmetricScaler(BaseScaler):
     """非对称缩放器：适用于所有非对称量化场景（支持int4/int8/int16等）"""
+    TYPE_RANGE = {
+        # 无符号整数类型（较少用于量化，但可扩展）
+        "int4": (0, 15),
+        "int8": (0, 255),
+    }
+
+    def __init__(self, original_dtype, target_dtype):
+        self.original_dtype = original_dtype
+        self.target_dtype = target_dtype
+        self.d_min, self.d_max = self.TYPE_RANGE[original_dtype]
+        self.q_min, self.q_max = self.TYPE_RANGE[target_dtype]
     
     def compute_params(self, stats: Dict) -> Dict:
         min_val = stats["min"]
