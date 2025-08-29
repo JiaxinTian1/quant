@@ -3,6 +3,7 @@ import torch.nn as nn
 import os
 import json
 import math
+import shutil
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Tuple
@@ -55,10 +56,10 @@ class SglangSaver(BaseSaver):
         self.save_state_dict_with_index(model_state_dict)
         self.save_weight_map()
         # 保存配置、分词器和量化参数
-        self.quant_service.config.save_pretrained(self.save_path)
-        self.quant_service.tokenizer.save_pretrained(self.save_path)
         self.save_quantization_config()
         self.save_hf_quant_config()
+        # self.copy_files()
+        self.quant_service.tokenizer.save_pretrained(self.save_path)
 
 
     def save_act_params(self, state_dict: Dict[str, torch.Tensor]):
@@ -148,6 +149,25 @@ class SglangSaver(BaseSaver):
     def save_hf_quant_config(self):
         pass
     
+    def copy_files(self):
+        names = [
+            "generation_config.json", "merges.txt",
+            "tokenizer.json", "tokenizer_config.json", "vocab.json",
+        ]
+        # 确保保存目录存在，如果不存在则创建
+        os.makedirs(self.save_path, exist_ok=True)
+        for name in names:
+            # 构建源文件和目标文件的完整路径
+            src = os.path.join(self.model_path, name)
+            dst = os.path.join(self.save_path, name)
+            # 检查源文件是否存在
+            if not os.path.exists(src):
+                print(f"警告: 源文件 {src} 不存在，跳过复制")
+                continue
+            # 复制文件
+            shutil.copy2(src, dst)
+
+    
     @staticmethod
     def _mapping_act_params(tensor_name):
         replacement_rules = {
@@ -196,7 +216,7 @@ class SglangIN4Saver(SglangSaver):
     
     def save_quantization_config(self):
         # 1. 读取原始 config.json
-        config_path = os.path.join(self.save_path, "config.json")
+        config_path = os.path.join(self.model_path, "config.json")
         with open(config_path, 'r', encoding='utf-8') as f:
             config: Dict[str, Any] = json.load(f)
         

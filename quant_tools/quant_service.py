@@ -119,9 +119,9 @@ class LoadProcessor(BaseProcessor):
             model_path, 
             config = self.quant_service.config,
             torch_dtype="auto",
-            # device_map="auto",
+            device_map="auto",
             trust_remote_code=True,
-        ).cuda()
+        )
 
         self.quant_service.tokenizer = AutoTokenizer.from_pretrained(
             model_path,
@@ -374,7 +374,7 @@ class QuantizationProcessor(BaseProcessor):
 
     def _quantize_subgraph(self, subgraph: List[str]):
         progress_bar = tqdm(
-            total=len(subgraph),
+            total=len(self.quant_service.layer_quantizers),
             desc="Quantizing",
             dynamic_ncols=True
         )
