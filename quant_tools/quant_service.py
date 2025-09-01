@@ -17,6 +17,7 @@ from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 from .quantizer import QuantizerFactory
 from .hook import HookManager
 from .saver import SaverFactory
+from .model_adapter import ModelAdapterFactory
 
 
 class BaseProcessor:
@@ -46,9 +47,7 @@ class QuantService:
         # 核心状态
         self.model_path = None
         self.save_path = None
-        self.model = None
-        self.tokenizer = None
-        self.config = None
+        self.warpped_model = None
         self.quant_config = None
         self.dataloader = None
         
@@ -110,22 +109,9 @@ class LoadProcessor(BaseProcessor):
         # 2. 加载模型、分词器和配置
         print(f"从 {model_path} 加载模型...")
         self.quant_service.model_path = model_path
-        self.quant_service.config = AutoConfig.from_pretrained(
-            model_path,
-            config = self.quant_service.config,
-            trust_remote_code=True
-        )
-        self.quant_service.model = AutoModelForCausalLM.from_pretrained(
-            model_path, 
-            config = self.quant_service.config,
-            torch_dtype="auto",
-            device_map="auto",
-            trust_remote_code=True,
-        )
-
-        self.quant_service.tokenizer = AutoTokenizer.from_pretrained(
-            model_path,
-            trust_remote_code=True
+        self.quant_service.warpped_model = ModelAdapterFactory.create(
+            self.quant_service.quant_config["model_type"],
+            model_path
         )
         
         
@@ -168,7 +154,7 @@ class LoadProcessor(BaseProcessor):
             raise FileNotFoundError(f"量化配置文件不存在: {quant_config_path}")
 
     def post_process(self):
-        print(f"模型加载完成，类型: {type(self.quant_service.model).__name__}")
+        print(f"模型加载完成，类型: {type(self.quant_service.warpped_model.model).__name__}")
 
 
 class InitProcessor(BaseProcessor):
@@ -177,8 +163,7 @@ class InitProcessor(BaseProcessor):
         self.pre_process()
         
         # 准备模型（切换为eval模式）
-        self.quant_service.model = self.quant_service.model.eval()
-        # self.quant_service.model.to('cpu') 
+        self.quant_service.warpped_model.model.eval()
         
         # 准备校准数据加载器
         self.quant_service.dataloader = self._create_calib_dataloader(calib_data)
@@ -197,13 +182,13 @@ class InitProcessor(BaseProcessor):
         dataloader = []
         for i in range(0, len(calib_data), batch_size):
             batch_text = calib_data[i:i+batch_size]
-            inputs = self.quant_service.tokenizer(
+            inputs = self.quant_service.warpped_model.tokenizer(
                 batch_text,
                 padding=True,
                 truncation=True,
                 max_length=512,
                 return_tensors="pt"
-            ).to(self.quant_service.model.device)
+            ).to(self.quant_service.warpped_model.model.device)
             dataloader.append(inputs)
         
         return dataloader
@@ -262,7 +247,7 @@ class SubgraphProcessor(BaseProcessor):
         """过滤出可量化的层"""
         disable_patterns = self.quant_service.quant_config.get("disable", [])
         quantizable = []
-        state_dict = self.quant_service.model.state_dict()
+        state_dict = self.quant_service.warpped_model.model.state_dict()
         
         for tensor_name in state_dict.keys():
             # 只处理权重张量
@@ -286,7 +271,7 @@ class SubgraphProcessor(BaseProcessor):
 
     def _get_layer_by_path(self, layer_path: str) -> nn.Module:
         """根据路径获取层"""
-        module = self.quant_service.model
+        module = self.quant_service.warpped_model.model
         for part in layer_path.split("."):
             module = getattr(module, part)
         return module
@@ -337,7 +322,7 @@ class CalibrationProcessor(BaseProcessor):
 
     def _get_layer_by_path(self, layer_path: str) -> nn.Module:
         """根据路径获取层模块"""
-        module = self.quant_service.model
+        module = self.quant_service.warpped_model.model
         for part in layer_path.split("."):
             module = getattr(module, part)
         return module
@@ -352,7 +337,7 @@ class CalibrationProcessor(BaseProcessor):
         for batch in self.quant_service.dataloader:
             batch = {k: v for k, v in batch.items()}
             with torch.no_grad():
-                self.quant_service.model(** batch)  # 触发前向传播
+                self.quant_service.warpped_model.forward(batch) # 触发前向传播
             progress_bar.update(1)
         progress_bar.close()
 
@@ -393,7 +378,7 @@ class QuantizationProcessor(BaseProcessor):
     
     def _get_layer_by_path(self, layer_path: str) -> nn.Module:
         """根据路径获取层"""
-        module = self.quant_service.model
+        module = self.quant_service.warpped_model.model
         for part in layer_path.split("."):
             module = getattr(module, part)
         return module

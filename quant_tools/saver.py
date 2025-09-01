@@ -14,7 +14,7 @@ class BaseSaver(ABC):
         self.quant_service = quant_service
         self.model_path = quant_service.model_path
         self.save_path = quant_service.save_path
-        self.model = quant_service.model
+        self.model = quant_service.warpped_model.model
         self.max_file_size_bytes = int(5 * 1024 ** 3)
     
     @abstractmethod
@@ -58,8 +58,8 @@ class SglangSaver(BaseSaver):
         # 保存配置、分词器和量化参数
         self.save_quantization_config()
         self.save_hf_quant_config()
-        # self.copy_files()
-        self.quant_service.tokenizer.save_pretrained(self.save_path)
+        self.copy_files()
+        # self.quant_service.tokenizer.save_pretrained(self.save_path)
 
 
     def save_act_params(self, state_dict: Dict[str, torch.Tensor]):

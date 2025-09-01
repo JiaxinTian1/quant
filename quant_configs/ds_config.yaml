@@ -1,6 +1,8 @@
 quant_type: int4
 quant_target: sglang
 original_dtype: bf16
+model_type: deepseekv3
+# model_type: qwen3
 
 global:
   weight:
