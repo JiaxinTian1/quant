@@ -68,6 +68,8 @@ class SymmetricScaler(BaseScaler):
     def quantize(self, tensor: torch.Tensor, params):
         scale = params['scale']
         tensor_quant = (tensor / scale)
+        if self.target_dtype in ["int4", "int8"]:
+            tensor_quant = torch.round(tensor_quant)
         return torch.clamp(
             tensor_quant,
             min=self.q_min,

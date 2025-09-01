@@ -23,6 +23,7 @@ class HookManager:
             # 通常激活值是层的输出（根据层类型调整，这里以output为例）
             input_tensor = input if isinstance(input, torch.Tensor) else input[0]
             weight_tensor = module.weight.data
+            # breakpoint()
             quantizer.calibrate(input_tensor, weight_tensor)
 
         # 注册前向Hook（推荐用forward_hook而非pre_hook，因为激活值通常是输出）

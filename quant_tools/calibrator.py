@@ -76,7 +76,6 @@ class MinMaxCalibrator(BaseCalibrator):
 
         # 根据粒度收集统计信息
         reshaped_tensor = self.reshaper.reshape(tensor)
-        # breakpoint()
         current_min, current_max = self._get_tensor_feature(reshaped_tensor)
 
         # 更新统计信息
