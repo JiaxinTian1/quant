@@ -103,9 +103,10 @@ class SglangSaver(BaseSaver):
         for name, tensor in state_dict.items():
             tensor_size = tensor.numel() * tensor.element_size()
             total_size += tensor_size
-            filename = f"model-{chunk_idx:05d}-of-{estimated_num_files:05d}.safetensors"
+            
             # 如果当前块加上新张量会超过限制，且当前块不为空，则保存当前块
             if current_size + tensor_size > self.max_file_size_bytes and current_chunk:
+                filename = f"model-{chunk_idx:05d}-of-{estimated_num_files:05d}.safetensors"
                 filepath = os.path.join(self.save_path, filename)
                 save_file(current_chunk, filepath)
                 chunk_files.append(filename)
@@ -116,8 +117,9 @@ class SglangSaver(BaseSaver):
                 progress_bar.update(1)
             
             # 添加张量到当前块并记录映射关系
+            current_filename = f"model-{chunk_idx:05d}-of-{estimated_num_files:05d}.safetensors"
             current_chunk[name] = tensor
-            self.weight_map[name] = filename
+            self.weight_map[name] = current_filename
             current_size += tensor_size
         
         # 保存最后一个块

@@ -109,8 +109,8 @@ class FP8INT4Quantizer(BaseQuantizer):
     def pack_int4(tensor):
         pack_reshaper = ReshaperFactory.create('group')
         tensor = pack_reshaper.reshape(tensor, 2)
-        low_bits = tensor[..., 1] & 0x0F
-        high_bits = tensor[..., 0] & 0x0F
+        high_bits = tensor[..., 1] & 0x0F
+        low_bits = tensor[..., 0] & 0x0F
         packed_tensor = (high_bits << 4) | low_bits
         return packed_tensor
 
