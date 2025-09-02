@@ -32,12 +32,12 @@ def main():
     model_path = "/data00/models/Qwen3-235B-A22B-FP8"
     # model_path = "/data00/models/DeepSeek-R1-converted"
     # model_path = "/data01/models/DeepSeek-V3-5layer"
-    quant_config_path = "/data01/tjx/quant/quant_configs/config.yaml"
-    quant_config_path = "/data01/tjx/quant/quant_configs/ds_config.yaml"
+    quant_config_path = "./quant_configs/config.yaml"
+    quant_config_path = "./quant_configs/ds_config.yaml"
     save_dir = "../quantized_model"
     save_dir = "../quantized_model_ds"
-    calib_path = "/data01/tjx/quant/datasets/calib.json"
-    calib_path = "/data01/tjx/quant/datasets/test.json"
+    calib_path = "./datasets/calib.json"
+    calib_path = "./datasets/test.json"
 
 
 
