@@ -22,4 +22,5 @@ class Qwen3Model:
         )
 
     def forward(self, batch):
+        breakpoint()
         self.model(** batch) 

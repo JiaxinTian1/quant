@@ -63,7 +63,7 @@ class FP8INT4Quantizer(BaseQuantizer):
         super().__init__(strategy)
     
     def calibrate(self, input_tensor, weight_tensor):
-        # print(self.tensor_name)
+        print(self.tensor_name)
         # print(self.strategy)
         # print(weight_tensor.dtype)
         # print(weight_tensor.device)
@@ -100,6 +100,7 @@ class FP8INT4Quantizer(BaseQuantizer):
         dequant_scaler = ScalerFactory.create(True, "bf16", "fp8_e4m3")
         dequant_reshaper = ReshaperFactory.create('block')
         tensor_to_dequant = layer.weight.data
+        breakpoint()
         pre_quant_params = {"scale": layer.weight_scale_inv.data.unsqueeze(-1)}
         reshaped_tensor = dequant_reshaper.reshape(tensor_to_dequant)
         dequant_weight = dequant_scaler.dequantize(reshaped_tensor.float(), pre_quant_params)

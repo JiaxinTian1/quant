@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.distributed as dist
 from typing import Dict, List, Any, Optional, Tuple
 import os
 import json
@@ -18,6 +19,61 @@ from .quantizer import QuantizerFactory
 from .hook import HookManager
 from .saver import SaverFactory
 from .model_adapter import ModelAdapterFactory
+
+
+class DistributedContext:
+    """分布式环境上下文（修复device_id类型错误）"""
+    def __init__(self):
+        self.world_size = int(os.getenv("WORLD_SIZE", "1"))
+        self.rank = int(os.getenv("RANK", "0"))
+        self.local_rank = int(os.getenv("LOCAL_RANK", "0"))
+        
+        # 1. 先确定当前进程的设备（返回torch.device对象，而非整数）
+        self.device = self._get_device()
+        
+        # 2. 绑定设备（确保当前进程使用指定GPU）
+        if self.device.type == "cuda":
+            torch.cuda.set_device(self.device)
+        
+        # 3. 初始化分布式进程组（传入正确类型的device_id）
+        self.init_process_group()
+
+    def _get_device(self) -> torch.device:
+        """获取当前进程的设备（返回torch.device对象）"""
+        if self.world_size > 1 and torch.cuda.is_available():
+            # 多卡场景：设备为 cuda:local_rank（如cuda:6）
+            return torch.device(f"cuda:{self.local_rank}")
+        elif torch.cuda.is_available():
+            # 单卡场景：默认cuda设备
+            return torch.device("cuda")
+        else:
+            # CPU场景
+            return torch.device("cpu")
+
+    def init_process_group(self):
+        """初始化分布式进程组（关键：device_id传入torch.device对象）"""
+        if self.world_size > 1 and not dist.is_initialized():
+            # 核心修改：device_id使用self.device（torch.device对象），而非整数
+            init_kwargs = {
+                "backend": "nccl",
+                "world_size": self.world_size,
+                "rank": self.rank,
+                # 正确类型：torch.device对象（支持访问.index属性）
+                "device_id": self.device if self.device.type == "cuda" else None
+            }
+
+            # 单机多卡默认使用env://初始化（依赖WORLD_SIZE/RANK/LOCAL_RANK环境变量）
+            dist.init_process_group(**init_kwargs)
+            print(f"[Rank {self.rank}] 分布式进程组初始化完成，绑定设备: {self.device}")
+    
+    def barrier(self):
+        """进程同步屏障，仅在分布式环境有效"""
+        if self.world_size > 1:
+            dist.barrier()
+    
+    def is_main_process(self) -> bool:
+        """判断当前进程是否为主进程（rank=0）"""
+        return self.rank == 0
 
 
 class BaseProcessor:
@@ -44,6 +100,9 @@ class BaseProcessor:
 class QuantService:
     """量化服务主控制器，协调所有处理器"""
     def __init__(self):
+        # 初始化分布式上下文
+        self.dist_ctx = DistributedContext()
+        
         # 核心状态
         self.model_path = None
         self.save_path = None
@@ -72,22 +131,43 @@ class QuantService:
             "save": SaveProcessor(self)
         }
 
-    def run_pipeline(self, model_path: str, save_dir: str, 
+    def run_pipeline(self, model_path: str, save_path: str, 
                     quant_config_path: str = None, calib_data: List[str] = None) -> None:
-        """执行完整量化流程"""
+        """执行完整量化流程：分离分布式加载与主进程量化步骤"""
+        # 第一步：模型加载（所有rank都执行，确保各rank加载对应分片）
+        load_params = {
+            "model_path": model_path, 
+            "save_path": save_path,
+            "quant_config_path": quant_config_path
+        }
+        if self.dist_ctx.is_main_process():
+            print("执行步骤: load（所有进程同时执行）")
+        # 所有rank共同执行加载步骤（分布式加载）
+        self.processors["load"].process(** load_params)
+        self.dist_ctx.barrier()  # 等待所有rank加载完成
+
+        # 后续步骤：仅主进程执行核心量化逻辑，其他进程等待
         pipeline_steps = [
-            ("load", {"model_path": model_path, "quant_config_path": quant_config_path}),
             ("init", {"calib_data": calib_data}),
             ("config", {}),
             ("subgraph", {}),
             ("calibration", {}),
             ("quantization", {}),
-            ("save", {"save_dir": save_dir})
+            ("save", {"save_path": save_path})
         ]
-        
+
         for step_name, kwargs in pipeline_steps:
-            print(f"执行步骤: {step_name}")
+            # 仅主进程执行量化步骤
+            if self.dist_ctx.is_main_process():
+                print(f"执行步骤: {step_name}（仅主进程执行）")
             self.processors[step_name].process(**kwargs)
+            
+            # 同步点：确保所有进程在同一步骤对齐
+            self.dist_ctx.barrier()
+
+        # 流程结束：仅主进程打印总结
+        if self.dist_ctx.is_main_process():
+            print("完整量化流程执行完毕")
 
 
 # --------------------------
@@ -95,7 +175,7 @@ class QuantService:
 # --------------------------
 class LoadProcessor(BaseProcessor):
     """模型加载处理器"""
-    def process(self, model_path: str, quant_config_path: str = None, **kwargs) -> None:
+    def process(self, model_path: str, save_path: str, quant_config_path: str = None, **kwargs) -> None:
         self.pre_process(model_path, quant_config_path)
         
         # 1. 加载量化配置
@@ -109,9 +189,11 @@ class LoadProcessor(BaseProcessor):
         # 2. 加载模型、分词器和配置
         print(f"从 {model_path} 加载模型...")
         self.quant_service.model_path = model_path
+        self.quant_service.save_path = save_path
         self.quant_service.warpped_model = ModelAdapterFactory.create(
-            self.quant_service.quant_config["model_type"],
-            model_path
+            model_type=self.quant_service.quant_config["model_type"],
+            model_path=model_path,
+            dist_ctx=self.quant_service.dist_ctx
         )
         
         
@@ -188,10 +270,17 @@ class InitProcessor(BaseProcessor):
                 truncation=True,
                 max_length=512,
                 return_tensors="pt"
-            ).to(self.quant_service.warpped_model.model.device)
+            ).to(next(self.quant_service.warpped_model.model.parameters()).device)
             dataloader.append(inputs)
         
         return dataloader
+
+    def pre_process(self):
+        save_path = self.quant_service.save_path
+        if dist.get_rank() == 0:
+            if os.path.exists(save_path) and len(os.listdir(save_path)) > 0:
+                print(f"警告: 保存目录 {save_path} 非空，可能会覆盖现有文件")
+                shutil.rmtree(save_path)
 
     def post_process(self):
         print(f"初始化完成，校准数据批次: {len(self.quant_service.dataloader)}")
@@ -233,14 +322,7 @@ class SubgraphProcessor(BaseProcessor):
         quantizable_layers = self._filter_quantizable_layers()
         
         # 按最大层数划分子图
-        max_layers = self.quant_service.quant_config.get("max_layers_per_subgraph", 5)
-
-        max_layers = len(quantizable_layers)
-
-        self.quant_service.subgraphs = [
-            quantizable_layers[i:i+max_layers] 
-            for i in range(0, len(quantizable_layers), max_layers)
-        ]
+        self.quant_service.subgraphs = quantizable_layers
         self.post_process()
 
     def _filter_quantizable_layers(self) -> List[str]:
@@ -291,9 +373,7 @@ class CalibrationProcessor(BaseProcessor):
     def process(self, **kwargs) -> None:
         self.pre_process()
         self.hook_manager = HookManager()
-        for i, subgraph in enumerate(self.quant_service.subgraphs):
-            print(f"校准子图 {i+1}/{len(self.quant_service.subgraphs)}")
-            self._calibrate_subgraph(subgraph)
+        self._calibrate_subgraph(self.quant_service.subgraphs)
         
         self.post_process()
 
@@ -351,9 +431,7 @@ class QuantizationProcessor(BaseProcessor):
     def process(self, **kwargs) -> None:
         self.pre_process()
 
-        for sg_idx, subgraph in enumerate(self.quant_service.subgraphs):
-            print(f"量化子图 {sg_idx+1}/{len(self.quant_service.subgraphs)}")
-            self._quantize_subgraph(subgraph)
+        self._quantize_subgraph(self.quant_service.subgraphs)
 
         self.post_process()
 
@@ -386,25 +464,25 @@ class QuantizationProcessor(BaseProcessor):
 
 class SaveProcessor(BaseProcessor):
     """保存处理器（适配safetensors格式）"""
-    def process(self, save_dir: str, **kwargs) -> None:
-        self.pre_process(save_dir)
-        os.makedirs(save_dir, exist_ok=True)
-        self.quant_service.save_path = save_dir
+    def process(self, save_path: str, **kwargs) -> None:
+        self.pre_process(save_path)
+        os.makedirs(save_path, exist_ok=True)
         
         saver = SaverFactory.create(self.quant_service)
         saver.save()
         
-        self.post_process(save_dir)
+        self.post_process(save_path)
 
 
-    def pre_process(self, save_dir: str):
-        if os.path.exists(save_dir) and len(os.listdir(save_dir)) > 0:
-            print(f"警告: 保存目录 {save_dir} 非空，可能会覆盖现有文件")
-            shutil.rmtree(save_dir)
+    def pre_process(self, save_path: str):
+        if dist.get_rank() == 0:
+            if os.path.exists(save_path) and len(os.listdir(save_path)) > 0:
+                print(f"警告: 保存目录 {save_path} 非空，可能会覆盖现有文件")
+                shutil.rmtree(save_path)
 
 
-    def post_process(self, save_dir: str):
-        print(f"量化模型已保存至 {save_dir}")
+    def post_process(self, save_path: str):
+        print(f"量化模型已保存至 {save_path}")
 
 
 # --------------------------
