@@ -11,7 +11,7 @@ from model_adapter.qwen3.qwen3 import Qwen3Model
 class ModelAdapterFactory:
     """模型适配器工厂，创建不同类型的模型适配器"""
     @staticmethod
-    def create(model_type: str, model_path: str, dist_ctx):
+    def create(model_type: str,  model_path: str, save_path: str, dist_ctx):
         """
         创建模型适配器实例
         
@@ -24,8 +24,8 @@ class ModelAdapterFactory:
             模型适配器实例
         """
         if model_type == "qwen3":
-            return Qwen3Model(model_path, dist_ctx)
+            return Qwen3Model(model_path, save_path, dist_ctx)
         elif model_type == "deepseekv3":
-            return DSV3Model(model_path, dist_ctx)
+            return DSV3Model(model_path, save_path, dist_ctx)
         else:
             raise ValueError(f"不支持的模型类型: {model_type}")

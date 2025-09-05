@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.distributed as dist
 import os
 import json
 import math
@@ -19,6 +20,7 @@ class DistSaver(BaseSaver):
         self.rank = self.dist_ctx.rank
         self.world_size = self.dist_ctx.world_size
         self.save_path = quant_service.save_path  # 直接使用最终保存目录
+        self.local_map = {}
         
         # 确保保存目录存在
         os.makedirs(self.save_path, exist_ok=True)
@@ -34,61 +36,66 @@ class DistSaver(BaseSaver):
         if self.dist_ctx.is_main_process():
             self._merge_local_maps()
             self._merge_act_params()
-            self.save_quantization_config()
-            self.save_hf_quant_config()
-            self.copy_files()
+            self.warpped_model.save_quantization_config()
+            self.warpped_model.save_hf_quant_config()
+            self.warpped_model.copy_files()
             self._cleanup_local_files()  # 清理局部映射文件
             print(f"[Rank 0] 保存完成，目录: {self.save_path}")
 
     def _save_rank_files(self):
         """当前进程直接保存分片和局部映射到最终目录"""
-        model_state_dict = self.model.state_dict()
+        model_state_dict = self._process_state_dict(self.warpped_model.model.state_dict())
         
-        # 1. 保存权重分片（文件名含rank，确保唯一）
+        self._collect_act_params(model_state_dict)
+        self._collect_weight_params(model_state_dict)
+        
+        self._save_local_map()
+
+    def _process_state_dict(self, state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """收集当前进程的state_dict"""
+        new_state_dict = {}
+        for key, value in state_dict.items():
+            new_key = self.warpped_model.mapping_tensor_params(key)
+            processed_tensor = self.warpped_model.merge_tp_shards_with_gather(new_key, value)
+            if processed_tensor is not None and processed_tensor.numel() > 0:
+                new_state_dict[new_key] = processed_tensor
+            # if dist.get_rank() == 0:
+            #     print("AAA")
+            #     print(new_key)
+            #     print(value.shape)
+        return new_state_dict
+    
+    def _collect_act_params(self, state_dict: Dict[str, torch.Tensor]):
+        """收集当前进程的act参数"""
+        act_params = {}
+        act_filename = f"input_scales_rank{self.rank}.safetensors"
+        for key, value in state_dict.items():
+            if "input_scale" in key:
+                act_params[key] = value
+                self.local_map[key] = "input_scales.safetensors"
+        if act_params:
+            act_path = os.path.join(self.save_path, act_filename)
+            save_file(act_params, act_path)
+    
+    def _collect_weight_params(self, state_dict: Dict[str, torch.Tensor]):
+        chunk_params = {}
         chunk_id = self.rank + 1
         total_chunks = self.world_size
         chunk_filename = f"model-{chunk_id:05d}-of-{total_chunks:05d}.safetensors"
-        chunk_path = os.path.join(self.save_path, chunk_filename)
-        save_file(model_state_dict, chunk_path)
-        print(f"[Rank {self.rank}] 已保存分片: {chunk_filename}")
-        
-        # 2. 保存当前进程的act参数（文件名含rank，避免冲突）
-        act_params = self._collect_act_params(model_state_dict)
-        act_filename = None
-        if act_params:
-            act_filename = f"input_scales_rank{self.rank}.safetensors"
-            act_path = os.path.join(self.save_path, act_filename)
-            save_file(act_params, act_path)
-        
-        # 3. 保存局部权重映射（记录当前进程的权重→文件名对应关系）
-        self._save_local_map(chunk_filename, act_filename)
-
-    def _collect_act_params(self, state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        """收集当前进程的act参数"""
-        act_params = {}
         for key, value in state_dict.items():
-            if "input_scale" in key:
-                new_key = self._mapping_act_params(key)
-                act_params[new_key] = value
-        return act_params
+            if "input_scale" not in key:
+                chunk_params[key] = value
+                self.local_map[key] = chunk_filename
+        if chunk_params:
+            chunk_path = os.path.join(self.save_path, chunk_filename)
+            save_file(chunk_params, chunk_path)
 
-    def _save_local_map(self, chunk_filename: str, act_filename: str):
+    def _save_local_map(self):
         """保存当前进程的局部权重映射（供主进程合并）"""
-        local_map = {}
-        # 记录权重映射
-        for name in self.model.state_dict().keys():
-            local_map[name] = chunk_filename
-        
-        # 记录act参数映射（若有）
-        if act_filename:
-            act_params = self._collect_act_params(self.model.state_dict())
-            for key in act_params.keys():
-                local_map[key] = "input_scales.safetensors"  # 最终合并后的文件名
-        
         # 保存局部映射（文件名含rank，避免冲突）
         map_path = os.path.join(self.save_path, f"local_map_rank{self.rank}.json")
         with open(map_path, "w", encoding="utf-8") as f:
-            json.dump(local_map, f, indent=2)
+            json.dump(self.local_map, f, indent=4)
 
     def _merge_local_maps(self):
         """主进程合并所有局部映射，生成完整索引"""
@@ -131,55 +138,3 @@ class DistSaver(BaseSaver):
             map_path = os.path.join(self.save_path, f"local_map_rank{rank}.json")
             if os.path.exists(map_path):
                 os.remove(map_path)
-    
-    def copy_files(self):
-        names = [
-            "generation_config.json", "merges.txt",
-            "tokenizer.json", "tokenizer_config.json", "vocab.json",
-        ]
-        # 确保保存目录存在，如果不存在则创建
-        os.makedirs(self.save_path, exist_ok=True)
-        for name in names:
-            # 构建源文件和目标文件的完整路径
-            src = os.path.join(self.model_path, name)
-            dst = os.path.join(self.save_path, name)
-            # 检查源文件是否存在
-            if not os.path.exists(src):
-                print(f"警告: 源文件 {src} 不存在，跳过复制")
-                continue
-            # 复制文件
-            shutil.copy2(src, dst)
-
-    
-    @staticmethod
-    def _mapping_act_params(tensor_name):
-        replacement_rules = {
-            'gate_proj': 'w1',
-            'up_proj': 'w3', 
-            'down_proj': 'w2'
-        }
-        if 'experts' not in tensor_name:
-            return tensor_name
-        for old_pattern, new_pattern in replacement_rules.items():
-            if old_pattern in tensor_name:
-                return tensor_name.replace(old_pattern, new_pattern)
-
-    def save_quantization_config(self):
-        # 1. 读取原始 config.json
-        config = self.quant_service.warpped_model.config.copy()
-        
-        # 2. 添加/更新量化配置
-        # del config["quantization_config"]
-    
-        # 3. 保存到新路径
-        with open(os.path.join(self.save_path, "config.json"), 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
-
-    def save_hf_quant_config(self):
-        """保存量化参数（保持原有逻辑，无需修改）"""
-        hf_quant_config = {}
-        hf_quant_config['quantization'] = {}
-        hf_quant_config['quantization']["quant_algo"] = "MIXED_PRECISION"
-        hf_quant_config['quantization']["kv_cache_quant_algo"] = None
-        with open(os.path.join(self.save_path, "hf_quant_config.json"), "w", encoding="utf-8") as f:
-            json.dump(hf_quant_config, f, indent=2, ensure_ascii=False)

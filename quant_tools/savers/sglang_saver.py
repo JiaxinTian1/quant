@@ -16,9 +16,11 @@ class SglangSaver(BaseSaver):
         super().__init__(quant_service)
         self.weight_map = {}
         self.max_file_size_bytes = int(5 * 1024 ** 3)
+        # 确保保存目录存在
+        os.makedirs(self.save_path, exist_ok=True)
     
     def save(self):
-        model_state_dict = self.model.state_dict()
+        model_state_dict = self._process_state_dict(self.warpped_model.model.state_dict())
         # 分离 act scale
         self.save_act_params(model_state_dict)
         # 分块保存模型权重
@@ -27,31 +29,30 @@ class SglangSaver(BaseSaver):
         # 保存配置、分词器和量化参数
         self.save_quantization_config()
         self.save_hf_quant_config()
-        self.copy_files()
+        self.warpped_model.copy_files()
         # self.quant_service.tokenizer.save_pretrained(self.save_path)
+    
+    def _process_state_dict(self, state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """收集当前进程的state_dict"""
+        new_state_dict = {}
+        for key, value in state_dict.items():
+            new_key = self.warpped_model.mapping_tensor_params(key)
+            new_state_dict[new_key] = value
+        return new_state_dict
 
 
     def save_act_params(self, state_dict: Dict[str, torch.Tensor]):
-        input_dict = {}
+        act_params = {}
         keys_to_process = []
-        # 第一步：识别要处理的键
+        act_filename = "input_scales.safetensors"
         for key, value in state_dict.items():
             if "input_scale" in key:
-                keys_to_process.append((key, value))
-        if not keys_to_process:
-            return
-        # 第二步：处理这些键
-        for key, value in keys_to_process:
-            new_key = self._mapping_act_params(key)
-            input_dict[new_key] = value
-            self.weight_map[new_key] = "input_scales.safetensors"
-            # 从原字典中删除
-            if key in state_dict:
-                state_dict.pop(key)
-        # 第三步：保存
-        filename = "input_scales.safetensors"
-        filepath = os.path.join(self.save_path, filename)
-        save_file(input_dict, filepath)
+                act_params[key] = value
+                self.weight_map[key] = act_filename
+        if act_params:
+            act_path = os.path.join(self.save_path, act_filename)
+            save_file(act_params, act_path)
+
     
     def save_state_dict_with_index(self, state_dict: Dict[str, torch.Tensor]) -> dict:
         """合并保存和索引生成，避免两次遍历"""
@@ -70,6 +71,8 @@ class SglangSaver(BaseSaver):
         )
         
         for name, tensor in state_dict.items():
+            if "input_scale" in name:
+                continue
             tensor_size = tensor.numel() * tensor.element_size()
             total_size += tensor_size
             
@@ -120,37 +123,8 @@ class SglangSaver(BaseSaver):
     def save_hf_quant_config(self):
         pass
     
-    def copy_files(self):
-        names = [
-            "generation_config.json", "merges.txt",
-            "tokenizer.json", "tokenizer_config.json", "vocab.json",
-        ]
-        # 确保保存目录存在，如果不存在则创建
-        os.makedirs(self.save_path, exist_ok=True)
-        for name in names:
-            # 构建源文件和目标文件的完整路径
-            src = os.path.join(self.model_path, name)
-            dst = os.path.join(self.save_path, name)
-            # 检查源文件是否存在
-            if not os.path.exists(src):
-                print(f"警告: 源文件 {src} 不存在，跳过复制")
-                continue
-            # 复制文件
-            shutil.copy2(src, dst)
-
     
-    @staticmethod
-    def _mapping_act_params(tensor_name):
-        replacement_rules = {
-            'gate_proj': 'w1',
-            'up_proj': 'w3', 
-            'down_proj': 'w2'
-        }
-        if 'experts' not in tensor_name:
-            return tensor_name
-        for old_pattern, new_pattern in replacement_rules.items():
-            if old_pattern in tensor_name:
-                return tensor_name.replace(old_pattern, new_pattern)
+
 
 class SglangFP8Saver(SglangSaver):
     def __init__(self, quant_service):

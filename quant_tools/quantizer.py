@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.distributed as dist
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Tuple
 from .calibrator import CalibratorFactory
@@ -14,19 +15,20 @@ from .hook import HookManager
 class QuantizerFactory:
     """校准器工厂"""
     @staticmethod
-    def create(strategy: Dict):
+    def create(strategy: Dict, dist_ctx):
         if strategy["quant_type"] == "fp8_e4m3":
-            return BF16FP8Quantizer(strategy)
+            return BF16FP8Quantizer(strategy, dist_ctx)
         elif strategy["quant_type"] == "int4":
-            return FP8INT4Quantizer(strategy)
+            return FP8INT4Quantizer(strategy, dist_ctx)
         else:
             print("未找到对应 quantizer")
 
 
 class BaseQuantizer():
-    def __init__(self, strategy):
+    def __init__(self, strategy, dist_ctx):
         self.tensor_name = strategy["tensor_name"]
         self.strategy = strategy
+        self.dist_ctx = dist_ctx
         self.act_calibrator = self._init_calibrator("activation")
         self.weight_calibrator = self._init_calibrator("weight")
         self.quant_info = {}
@@ -59,21 +61,27 @@ class BaseQuantizer():
 
 
 class FP8INT4Quantizer(BaseQuantizer):
-    def __init__(self, strategy):
-        super().__init__(strategy)
+    def __init__(self, strategy, dist_ctx):
+        super().__init__(strategy, dist_ctx)
     
     def calibrate(self, input_tensor, weight_tensor):
-        print(self.tensor_name)
+        # if self.dist_ctx.is_main_process():
+        #     print("AAA")
+        #     print(self.tensor_name)
         # print(self.strategy)
         # print(weight_tensor.dtype)
         # print(weight_tensor.device)
         self.act_calibrator.collect(input_tensor)
     
     def quantize(self, layer):
-        # print(self.tensor_name)
+        
         tensor_to_quant = self.dequant_fp8_tensor(layer)
         self.weight_calibrator.collect(tensor_to_quant)
         self.quant_info = self.compute_params()
+        # if dist.get_rank() == 7:
+        #     print(self.tensor_name)
+        #     print("AAA")
+        #     print(self.quant_info)
         if self.strategy["weight"]["enable"]:
             self.quant_weight = self.weight_calibrator.quantize(tensor_to_quant, self.quant_info['weight'])
             self.quant_weight = self.pack_int4(self.quant_weight)
@@ -90,6 +98,7 @@ class FP8INT4Quantizer(BaseQuantizer):
     def _register(self, layer):
         if self.strategy["weight"]["enable"]:
             self.register_params(layer, "weight", self.quant_weight)
+            # self.register_params(layer, "scale", self.quant_info["weight"]["scale"].squeeze(-1))
             self.register_params(layer, "weight_scale_inv", self.quant_info["weight"]["scale"].squeeze(-1))
         if self.strategy["activation"]["enable"]:
             if self.quant_info["activation"]:
@@ -100,8 +109,11 @@ class FP8INT4Quantizer(BaseQuantizer):
         dequant_scaler = ScalerFactory.create(True, "bf16", "fp8_e4m3")
         dequant_reshaper = ReshaperFactory.create('block')
         tensor_to_dequant = layer.weight.data
-        breakpoint()
-        pre_quant_params = {"scale": layer.weight_scale_inv.data.unsqueeze(-1)}
+        # breakpoint()
+        if hasattr(layer, 'weight_scale_inv'):
+            pre_quant_params = {"scale": layer.weight_scale_inv.data.unsqueeze(-1)}
+        else:
+            pre_quant_params = {"scale": layer.scale.data.unsqueeze(-1)}
         reshaped_tensor = dequant_reshaper.reshape(tensor_to_dequant)
         dequant_weight = dequant_scaler.dequantize(reshaped_tensor.float(), pre_quant_params)
         return dequant_reshaper.unreshape(dequant_weight)
@@ -118,8 +130,8 @@ class FP8INT4Quantizer(BaseQuantizer):
 
 
 class BF16FP8Quantizer(BaseQuantizer):
-    def __init__(self, strategy):
-        super().__init__(strategy)
+    def __init__(self, strategy, dist_ctx):
+        super().__init__(strategy, dist_ctx)
     
     def calibrate(self, input_tensor, weight_tensor):
         self.act_calibrator.collect(input_tensor)

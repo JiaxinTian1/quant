@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.distributed as dist
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Tuple
 

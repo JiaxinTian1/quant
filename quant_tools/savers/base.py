@@ -5,7 +5,7 @@ class BaseSaver(ABC):
         self.quant_service = quant_service
         self.model_path = quant_service.model_path
         self.save_path = quant_service.save_path
-        self.model = quant_service.warpped_model.model
+        self.warpped_model = quant_service.warpped_model
     
     @abstractmethod
     def save(self):

@@ -1,7 +1,7 @@
 quant_type: int4
 quant_target: sglang
 original_dtype: bf16
-model_type: deepseekv3
+model_type: qwen3
 
 global:
   weight:
@@ -13,7 +13,7 @@ global:
       is_sym: True
   
 local:
-  ffn.experts:
+  mlp.experts:
     weight:
       enable: True
       target_dtype: int4
@@ -29,6 +29,4 @@ local:
 
 
 disable:
-  ["lm_head", "ffn.gate"]
-
-
+  ["lm_head", "mlp.gate"]

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.distributed as dist
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Tuple
 from .scaler import ScalerFactory
@@ -87,6 +88,7 @@ class MinMaxCalibrator(BaseCalibrator):
         self.min = torch.min(self.min, current_min) if self.min is not None else current_min
         self.max = torch.max(self.max, current_max) if self.max is not None else current_max
         self.collected = True
+        
         
     def compute_params(self) -> Dict[str, torch.Tensor]:
         """通过缩放器计算量化参数"""

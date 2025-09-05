@@ -32,8 +32,8 @@ class DistributedContext:
         self.device = self._get_device()
         
         # 2. 绑定设备（确保当前进程使用指定GPU）
-        if self.device.type == "cuda":
-            torch.cuda.set_device(self.device)
+        # if self.device.type == "cuda":
+        #     torch.cuda.set_device(self.device)
         
         # 3. 初始化分布式进程组（传入正确类型的device_id）
         self.init_process_group()
@@ -116,6 +116,7 @@ class QuantService:
         self.layer_quantizers = {}
         self.quant_params = {}  # 量化参数（tensor_name -> 参数字典）
         self.quantized_layers = {}  # 已量化的层（tensor_name -> QuantModule）
+        self.hook_manager = None
         
         # 类型信息
         self.original_dtype = None
@@ -153,7 +154,7 @@ class QuantService:
             ("subgraph", {}),
             ("calibration", {}),
             ("quantization", {}),
-            ("save", {"save_path": save_path})
+            ("save", {})
         ]
 
         for step_name, kwargs in pipeline_steps:
@@ -168,6 +169,12 @@ class QuantService:
         # 流程结束：仅主进程打印总结
         if self.dist_ctx.is_main_process():
             print("完整量化流程执行完毕")
+        
+    def __del__(self):
+        # 仅在分布式环境已初始化时关闭
+        if dist.is_initialized():
+            dist.destroy_process_group()
+            print(f"[Rank {self.dist_ctx.rank}] 已关闭分布式进程组")
 
 
 # --------------------------
@@ -193,6 +200,7 @@ class LoadProcessor(BaseProcessor):
         self.quant_service.warpped_model = ModelAdapterFactory.create(
             model_type=self.quant_service.quant_config["model_type"],
             model_path=model_path,
+            save_path=save_path,
             dist_ctx=self.quant_service.dist_ctx
         )
         
@@ -277,10 +285,17 @@ class InitProcessor(BaseProcessor):
 
     def pre_process(self):
         save_path = self.quant_service.save_path
-        if dist.get_rank() == 0:
-            if os.path.exists(save_path) and len(os.listdir(save_path)) > 0:
-                print(f"警告: 保存目录 {save_path} 非空，可能会覆盖现有文件")
-                shutil.rmtree(save_path)
+        if self.quant_service.dist_ctx.is_main_process():
+            # 检查目录是否存在
+            if os.path.exists(save_path):
+                # 目录存在且非空：提示并删除
+                if len(os.listdir(save_path)) > 0:
+                    print(f"警告: 保存目录 {save_path} 非空，将覆盖现有文件")
+                    shutil.rmtree(save_path)
+            else:
+                # 目录不存在：创建
+                os.makedirs(save_path, exist_ok=True)
+                print(f"创建保存目录: {save_path}")
 
     def post_process(self):
         print(f"初始化完成，校准数据批次: {len(self.quant_service.dataloader)}")
@@ -319,37 +334,35 @@ class SubgraphProcessor(BaseProcessor):
     """子图划分处理器"""
     def process(self, **kwargs) -> None:
         # 过滤可量化层
-        quantizable_layers = self._filter_quantizable_layers()
-        
-        # 按最大层数划分子图
-        self.quant_service.subgraphs = quantizable_layers
+        self.quant_service.hook_manager = HookManager()
+        self._filter_quantizable_layers()
         self.post_process()
 
     def _filter_quantizable_layers(self) -> List[str]:
         """过滤出可量化的层"""
-        disable_patterns = self.quant_service.quant_config.get("disable", [])
-        quantizable = []
         state_dict = self.quant_service.warpped_model.model.state_dict()
         
         for tensor_name in state_dict.keys():
             # 只处理权重张量
+            
             if not tensor_name.endswith('.weight'):
                 continue
-                
-            # 只处理Linear层
-            layer_path = ".".join(tensor_name.split(".")[:-1])
-            try:
-                layer = self._get_layer_by_path(layer_path)
-                if not isinstance(layer, (nn.Linear, nn.Conv2d)):
-                    continue
-            except:
+            
+            strategy = self.quant_service.strategy_parser.get_strategy(
+                tensor_name, 
+                )
+            if not strategy["enable"]:
                 continue
-                
-            # 检查是否被禁用
-            if any(fnmatch.fnmatch(tensor_name, pattern) for pattern in disable_patterns):
-                continue 
-            quantizable.append(tensor_name)
-        return quantizable
+            
+            # 创建量化器
+            layer_path = ".".join(tensor_name.split(".")[:-1])
+            layer = self._get_layer_by_path(layer_path)
+            # print(f"原始权重设备: {layer.weight.device}")
+            quantizer = QuantizerFactory.create(strategy, self.quant_service.dist_ctx)
+            self.quant_service.layer_quantizers[tensor_name] = quantizer
+            quantizer.process()
+            test_device = torch.device("cuda")
+            self.quant_service.hook_manager.register_hook(layer, quantizer)
 
     def _get_layer_by_path(self, layer_path: str) -> nn.Module:
         """根据路径获取层"""
@@ -372,40 +385,16 @@ class CalibrationProcessor(BaseProcessor):
     """校准处理器"""
     def process(self, **kwargs) -> None:
         self.pre_process()
-        self.hook_manager = HookManager()
-        self._calibrate_subgraph(self.quant_service.subgraphs)
+        self._calibrate_subgraph()
         
         self.post_process()
 
-    def _calibrate_subgraph(self, subgraph: List[str]):
+    def _calibrate_subgraph(self):
         """校准单个子图：为每个层创建Algorithm实例并计算参数"""
-        # 为子图中的每个层创建算法实例
-        for tensor_name in subgraph:
-            strategy = self.quant_service.strategy_parser.get_strategy(
-                tensor_name, 
-                )
-            if not strategy["enabled"]:
-                continue
-            # 创建量化器
-            layer_path = ".".join(tensor_name.split(".")[:-1])
-            layer = self._get_layer_by_path(layer_path)
-            # print(f"原始权重设备: {layer.weight.device}")
-            quantizer = QuantizerFactory.create(strategy)
-            self.quant_service.layer_quantizers[tensor_name] = quantizer
-            quantizer.process()
-            test_device = torch.device("cuda")
-            self.hook_manager.register_hook(layer, quantizer)
         
         # 运行校准数据，触发激活值收集
         self._run_calibration_forward()
-
-
-    def _get_layer_by_path(self, layer_path: str) -> nn.Module:
-        """根据路径获取层模块"""
-        module = self.quant_service.warpped_model.model
-        for part in layer_path.split("."):
-            module = getattr(module, part)
-        return module
+        self.quant_service.hook_manager.remove_all_hooks()
 
     def _run_calibration_forward(self):
         """运行校准数据，触发Hook收集激活值"""
@@ -422,7 +411,6 @@ class CalibrationProcessor(BaseProcessor):
         progress_bar.close()
 
     def post_process(self):
-        self.hook_manager.remove_all_hooks()
         print(f"校准完成，收集{len(self.quant_service.layer_quantizers)}层量化参数")
 
 
@@ -441,12 +429,11 @@ class QuantizationProcessor(BaseProcessor):
             desc="Quantizing",
             dynamic_ncols=True
         )
-        for tensor_name in subgraph:
-            if tensor_name not in self.quant_service.layer_quantizers:
-                continue
+        for tensor_name, quantizer in self.quant_service.layer_quantizers.items():
             layer_path = ".".join(tensor_name.split(".")[:-1])
             layer = self._get_layer_by_path(layer_path)
             quantizer = self.quant_service.layer_quantizers[tensor_name]
+            # breakpoint()
             quantizer.quantize(layer)
             progress_bar.update(1)
         progress_bar.close()
@@ -464,25 +451,22 @@ class QuantizationProcessor(BaseProcessor):
 
 class SaveProcessor(BaseProcessor):
     """保存处理器（适配safetensors格式）"""
-    def process(self, save_path: str, **kwargs) -> None:
-        self.pre_process(save_path)
-        os.makedirs(save_path, exist_ok=True)
+    
+    def process(self, **kwargs) -> None:
+        self.pre_process()
         
         saver = SaverFactory.create(self.quant_service)
         saver.save()
         
-        self.post_process(save_path)
+        self.post_process()
 
 
-    def pre_process(self, save_path: str):
-        if dist.get_rank() == 0:
-            if os.path.exists(save_path) and len(os.listdir(save_path)) > 0:
-                print(f"警告: 保存目录 {save_path} 非空，可能会覆盖现有文件")
-                shutil.rmtree(save_path)
+    def pre_process(self):
+        pass
 
 
-    def post_process(self, save_path: str):
-        print(f"量化模型已保存至 {save_path}")
+    def post_process(self):
+        print(f"量化模型已保存至 {self.quant_service.save_path}")
 
 
 # --------------------------
@@ -504,11 +488,11 @@ class StrategyParser:
         
         # 检查是否禁用
         if self._is_disabled(tensor_name):
-            strategy = {"enabled": False}
+            strategy = {"enable": False}
         else:
             # 基础策略（全局配置）
             strategy = {
-                "enabled": True,
+                "enable": False,
                 "tensor_name": tensor_name,
                 "quant_type": self.quant_config.get("quant_type", "fp8"),
                 "weight": deepcopy(self.global_cfg.get("weight", {})),
@@ -520,6 +504,8 @@ class StrategyParser:
 
             # 应用局部配置覆盖
             self._apply_local_overrides(tensor_name, strategy)
+            if strategy["weight"]["enable"] or strategy["activation"]["enable"]:
+                strategy["enable"] = True
         
         self._cache[tensor_name] = strategy
         return strategy
