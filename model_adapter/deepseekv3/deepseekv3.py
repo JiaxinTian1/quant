@@ -89,8 +89,29 @@ class DSV3Model:
         return tensor_name
     
     def merge_tp_shards_with_gather(self, key, tensor):
-        if 'shared_experts' not in key:
+        tp_patterns = {
+            'shared_experts.down_proj': 1,
+            'mlp.down_proj': 1,
+            'self_attn.o_proj': 1,
+            'self_attn.kv_b_proj': 0,
+            'self_attn.q_b_proj': 0,
+            'shared_experts.gate_proj': 0,
+            'shared_experts.up_proj': 0,
+            'mlp.gate_proj': 0,
+            'mlp.up_proj': 0,
+            'embed_tokens': 0,
+            'lm_head': 0,
+        }
+        # 检查key是否匹配任何TP模式（只要包含关键字就触发）
+        matched_dim = None
+        for pattern, dim in tp_patterns.items():
+            if pattern in key:
+                matched_dim = dim
+                break  # 找到第一个匹配的模式就停止
+        # 非TP层：直接返回原张量
+        if matched_dim is None:
             return tensor
+        
         world_size = self.dist_ctx.world_size
         rank = self.dist_ctx.rank
         gathered_tensor = []
@@ -98,7 +119,6 @@ class DSV3Model:
             shard_shape = list(tensor.shape)  # 单个分片的形状（如 7168x256）
             # 为每个进程的分片预分配内存（共 8 个）
             for _ in range(world_size):
-                # 注意：这里应使用分片形状，而非完整形状（完整形状是拼接后的）
                 shard = torch.empty(shard_shape, device=tensor.device, dtype=tensor.dtype)
                 gathered_tensor.append(shard)
         dist.gather(
@@ -107,8 +127,7 @@ class DSV3Model:
             dst=0                  # 目标 rank
         )
         if rank == 0:
-            dim = 1 if 'down_proj' in key else 0
-            merged_tensor = torch.cat(gathered_tensor, dim=dim)
+            merged_tensor = torch.cat(gathered_tensor, dim=matched_dim)
             return merged_tensor
         else:
             return None

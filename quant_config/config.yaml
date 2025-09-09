@@ -1,0 +1,31 @@
+quant_type: "fp8_e4m3"
+quant_target: "sglang"
+original_dtype: bf16
+
+global:
+  weight:
+    enable: True
+    target_dtype: fp8_e4m3
+    calibrator: "minmax"  
+    granularity: "block"  
+    is_sym: True
+  activation:
+    enable: False
+  algorithm: 
+    minmax:
+      is_sym: True
+  
+local:
+  self_attn:
+    weight:
+      enable: True
+      target_dtype: int8  
+      calibrator: "minmax"  
+      granularity: "channel"  
+
+disable:
+  ["*lm_head*"]
+
+max_layers_per_subgraph: 5
+
+is_training: False
