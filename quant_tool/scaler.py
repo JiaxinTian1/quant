@@ -41,7 +41,7 @@ class SymmetricScaler(BaseScaler):
         "int4": (-8, 7),
         "int8": (-128, 127),
         "fp8_e4m3": (-448, 448), 
-        "bf16": (-128, 127),
+        "bfloat16": (-128, 127),
     }
 
     def __init__(self, original_dtype, target_dtype):
@@ -133,7 +133,7 @@ def parse_dtype(dtype_str: str) -> Tuple[torch.dtype, int]:
         "int16": torch.int16,
         "int32": torch.int32,
         "fp8_e4m3": torch.float8_e4m3fn,
-        "bf16": torch.bfloat16
+        "bfloat16": torch.bfloat16
     }
     dtype_str = dtype_str.lower()
     if dtype_str not in dtype_map:

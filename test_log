@@ -1,146 +1,185 @@
-W0908 12:18:10.765000 2174895 torch/distributed/run.py:774] 
-W0908 12:18:10.765000 2174895 torch/distributed/run.py:774] *****************************************
-W0908 12:18:10.765000 2174895 torch/distributed/run.py:774] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
-W0908 12:18:10.765000 2174895 torch/distributed/run.py:774] *****************************************
-[Rank 4] 分布式进程组初始化完成，绑定设备: cuda:4[Rank 1] 分布式进程组初始化完成，绑定设备: cuda:1[Rank 2] 分布式进程组初始化完成，绑定设备: cuda:2
-
-
-[Rank 7] 分布式进程组初始化完成，绑定设备: cuda:7
-[Rank 3] 分布式进程组初始化完成，绑定设备: cuda:3[Rank 6] 分布式进程组初始化完成，绑定设备: cuda:6
-
+W0909 08:05:49.237000 2526692 torch/distributed/run.py:774] 
+W0909 08:05:49.237000 2526692 torch/distributed/run.py:774] *****************************************
+W0909 08:05:49.237000 2526692 torch/distributed/run.py:774] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0909 08:05:49.237000 2526692 torch/distributed/run.py:774] *****************************************
 [Rank 5] 分布式进程组初始化完成，绑定设备: cuda:5
-已从 ./quant_configs/ds_config.yaml 加载量化配置
-从 /data00/models/DeepSeek-R1-converted 加载模型...
-已从 ./quant_configs/ds_config.yaml 加载量化配置
-从 /data00/models/DeepSeek-R1-converted 加载模型...
-已从 ./quant_configs/ds_config.yaml 加载量化配置
-从 /data00/models/DeepSeek-R1-converted 加载模型...
-已从 ./quant_configs/ds_config.yaml 加载量化配置
-从 /data00/models/DeepSeek-R1-converted 加载模型...
-已从 ./quant_configs/ds_config.yaml 加载量化配置
-从 /data00/models/DeepSeek-R1-converted 加载模型...
-已从 ./quant_configs/ds_config.yaml 加载量化配置
-从 /data00/models/DeepSeek-R1-converted 加载模型...
+[Rank 7] 分布式进程组初始化完成，绑定设备: cuda:7
+[Rank 6] 分布式进程组初始化完成，绑定设备: cuda:6
+量化流程执行失败: 'LoadProcessor' object has no attribute 'model_path'
+量化流程执行失败: 'LoadProcessor' object has no attribute 'model_path'
+量化流程执行失败: 'LoadProcessor' object has no attribute 'model_path'
+[Rank 4] 分布式进程组初始化完成，绑定设备: cuda:4
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "/data00/tjx/quant/test.py", line 53, in <module>
+[rank5]:     main()
+[rank5]:   File "/data00/tjx/quant/test.py", line 42, in main
+[rank5]:     quant_service.run_pipeline(
+[rank5]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 74, in run_pipeline
+[rank5]:     self.processors["load"].process(** load_params)
+[rank5]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 113, in process
+[rank5]:     self.pre_process(model_path, quant_config_path)
+[rank5]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 158, in pre_process
+[rank5]:     self._parse_model_config(model_path)
+[rank5]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 144, in _parse_model_config
+[rank5]:     original_config_path = os.path.join(self.model_path, "config.json")
+[rank5]:                                         ^^^^^^^^^^^^^^^
+[rank5]: AttributeError: 'LoadProcessor' object has no attribute 'model_path'
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "/data00/tjx/quant/test.py", line 53, in <module>
+[rank7]:     main()
+[rank7]:   File "/data00/tjx/quant/test.py", line 42, in main
+[rank7]:     quant_service.run_pipeline(
+[rank7]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 74, in run_pipeline
+[rank7]:     self.processors["load"].process(** load_params)
+[rank7]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 113, in process
+[rank7]:     self.pre_process(model_path, quant_config_path)
+[rank7]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 158, in pre_process
+[rank7]:     self._parse_model_config(model_path)
+[rank7]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 144, in _parse_model_config
+[rank7]:     original_config_path = os.path.join(self.model_path, "config.json")
+[rank7]:                                         ^^^^^^^^^^^^^^^
+[rank7]: AttributeError: 'LoadProcessor' object has no attribute 'model_path'
+量化流程执行失败: 'LoadProcessor' object has no attribute 'model_path'
+[rank6]: Traceback (most recent call last):
+[rank6]:   File "/data00/tjx/quant/test.py", line 53, in <module>
+[rank6]:     main()
+[rank6]:   File "/data00/tjx/quant/test.py", line 42, in main
+[rank6]:     quant_service.run_pipeline(
+[rank6]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 74, in run_pipeline
+[rank6]:     self.processors["load"].process(** load_params)
+[rank6]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 113, in process
+[rank6]:     self.pre_process(model_path, quant_config_path)
+[rank6]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 158, in pre_process
+[rank6]:     self._parse_model_config(model_path)
+[rank6]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 144, in _parse_model_config
+[rank6]:     original_config_path = os.path.join(self.model_path, "config.json")
+[rank6]:                                         ^^^^^^^^^^^^^^^
+[rank6]: AttributeError: 'LoadProcessor' object has no attribute 'model_path'
+[rank4]: Traceback (most recent call last):
+[rank4]:   File "/data00/tjx/quant/test.py", line 53, in <module>
+[rank4]:     main()
+[rank4]:   File "/data00/tjx/quant/test.py", line 42, in main
+[rank4]:     quant_service.run_pipeline(
+[rank4]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 74, in run_pipeline
+[rank4]:     self.processors["load"].process(** load_params)
+[rank4]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 113, in process
+[rank4]:     self.pre_process(model_path, quant_config_path)
+[rank4]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 158, in pre_process
+[rank4]:     self._parse_model_config(model_path)
+[rank4]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 144, in _parse_model_config
+[rank4]:     original_config_path = os.path.join(self.model_path, "config.json")
+[rank4]:                                         ^^^^^^^^^^^^^^^
+[rank4]: AttributeError: 'LoadProcessor' object has no attribute 'model_path'
 [Rank 0] 分布式进程组初始化完成，绑定设备: cuda:0
 执行步骤: load（所有进程同时执行）
-已从 ./quant_configs/ds_config.yaml 加载量化配置
-从 /data00/models/DeepSeek-R1-converted 加载模型...
-已从 ./quant_configs/ds_config.yaml 加载量化配置
-从 /data00/models/DeepSeek-R1-converted 加载模型...
-Loading /data00/models/DeepSeek-R1-converted/model3-mp8.safetensors
-Loading /data00/models/DeepSeek-R1-converted/model4-mp8.safetensors
-Loading /data00/models/DeepSeek-R1-converted/model1-mp8.safetensors
-Loading /data00/models/DeepSeek-R1-converted/model0-mp8.safetensors
-Loading /data00/models/DeepSeek-R1-converted/model2-mp8.safetensors
-Loading /data00/models/DeepSeek-R1-converted/model7-mp8.safetensors
-Loading /data00/models/DeepSeek-R1-converted/model5-mp8.safetensors
-Loading /data00/models/DeepSeek-R1-converted/model6-mp8.safetensors
-Loaded /data00/models/DeepSeek-R1-converted/model3-mp8.safetensors
-模型加载完成，类型: Transformer
-Loaded /data00/models/DeepSeek-R1-converted/model6-mp8.safetensors
-Loaded /data00/models/DeepSeek-R1-converted/model7-mp8.safetensors
-模型加载完成，类型: Transformer
-模型加载完成，类型: Transformer
-Loaded /data00/models/DeepSeek-R1-converted/model5-mp8.safetensors
-模型加载完成，类型: Transformer
-Loaded /data00/models/DeepSeek-R1-converted/model4-mp8.safetensors
-Loaded /data00/models/DeepSeek-R1-converted/model2-mp8.safetensors
-模型加载完成，类型: Transformer
-Loaded /data00/models/DeepSeek-R1-converted/model0-mp8.safetensors
-模型加载完成，类型: Transformer
-模型加载完成，类型: Transformer
-Loaded /data00/models/DeepSeek-R1-converted/model1-mp8.safetensors
-模型加载完成，类型: Transformer
-执行步骤: init（仅主进程执行）
-警告: 保存目录 ../quantized_model_ds 非空，将覆盖现有文件
-初始化完成，校准数据批次: 2
-初始化完成，校准数据批次: 2
-初始化完成，校准数据批次: 2
-初始化完成，校准数据批次: 2
-初始化完成，校准数据批次: 2
-初始化完成，校准数据批次: 2
-初始化完成，校准数据批次: 2
-初始化完成，校准数据批次: 2
-执行步骤: config（仅主进程执行）
-配置解析器初始化完成（动态策略解析）
-配置解析器初始化完成（动态策略解析）
-配置解析器初始化完成（动态策略解析）
-配置解析器初始化完成（动态策略解析）
-配置解析器初始化完成（动态策略解析）
-配置解析器初始化完成（动态策略解析）配置解析器初始化完成（动态策略解析）
+量化流程执行失败: 'LoadProcessor' object has no attribute 'model_path'
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/data00/tjx/quant/test.py", line 53, in <module>
+[rank0]:     main()
+[rank0]:   File "/data00/tjx/quant/test.py", line 42, in main
+[rank0]:     quant_service.run_pipeline(
+[rank0]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 74, in run_pipeline
+[rank0]:     self.processors["load"].process(** load_params)
+[rank0]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 113, in process
+[rank0]:     self.pre_process(model_path, quant_config_path)
+[rank0]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 158, in pre_process
+[rank0]:     self._parse_model_config(model_path)
+[rank0]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 144, in _parse_model_config
+[rank0]:     original_config_path = os.path.join(self.model_path, "config.json")
+[rank0]:                                         ^^^^^^^^^^^^^^^
+[rank0]: AttributeError: 'LoadProcessor' object has no attribute 'model_path'
+[Rank 2] 分布式进程组初始化完成，绑定设备: cuda:2
+量化流程执行失败: 'LoadProcessor' object has no attribute 'model_path'
+[Rank 3] 分布式进程组初始化完成，绑定设备: cuda:3
+[Rank 1] 分布式进程组初始化完成，绑定设备: cuda:1
+量化流程执行失败: 'LoadProcessor' object has no attribute 'model_path'
+量化流程执行失败: 'LoadProcessor' object has no attribute 'model_path'[rank2]: Traceback (most recent call last):
+[rank2]:   File "/data00/tjx/quant/test.py", line 53, in <module>
+[rank2]:     main()
+[rank2]:   File "/data00/tjx/quant/test.py", line 42, in main
+[rank2]:     quant_service.run_pipeline(
+[rank2]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 74, in run_pipeline
+[rank2]:     self.processors["load"].process(** load_params)
+[rank2]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 113, in process
+[rank2]:     self.pre_process(model_path, quant_config_path)
+[rank2]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 158, in pre_process
+[rank2]:     self._parse_model_config(model_path)
+[rank2]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 144, in _parse_model_config
+[rank2]:     original_config_path = os.path.join(self.model_path, "config.json")
+[rank2]:                                         ^^^^^^^^^^^^^^^
+[rank2]: AttributeError: 'LoadProcessor' object has no attribute 'model_path'
 
-配置解析器初始化完成（动态策略解析）
-执行步骤: subgraph（仅主进程执行）
-子图划分完成，0个子图，共0层
-子图划分完成，0个子图，共0层
-子图划分完成，0个子图，共0层
-子图划分完成，0个子图，共0层
-子图划分完成，0个子图，共0层
-子图划分完成，0个子图，共0层
-子图划分完成，0个子图，共0层
-子图划分完成，0个子图，共0层
-执行步骤: calibration（仅主进程执行）
-Calibrating:   0%|          | 0/2 [00:00<?, ?it/s]Calibrating:   0%|          | 0/2 [00:00<?, ?it/s]Calibrating:   0%|          | 0/2 [00:00<?, ?it/s]Calibrating:   0%|          | 0/2 [00:00<?, ?it/s]Calibrating:   0%|          | 0/2 [00:00<?, ?it/s]Calibrating:   0%|          | 0/2 [00:00<?, ?it/s]Calibrating:   0%|          | 0/2 [00:00<?, ?it/s]Calibrating:   0%|          | 0/2 [00:00<?, ?it/s]Calibrating:  50%|█████     | 1/2 [00:01<00:01,  1.20s/it]Calibrating:  50%|█████     | 1/2 [00:01<00:01,  1.20s/it]Calibrating:  50%|█████     | 1/2 [00:01<00:01,  1.20s/it]Calibrating:  50%|█████     | 1/2 [00:01<00:01,  1.20s/it]Calibrating:  50%|█████     | 1/2 [00:01<00:01,  1.20s/it]Calibrating:  50%|█████     | 1/2 [00:01<00:01,  1.20s/it]Calibrating:  50%|█████     | 1/2 [00:01<00:01,  1.20s/it]Calibrating:  50%|█████     | 1/2 [00:01<00:01,  1.21s/it]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.33it/s]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.22it/s]
-Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.33it/s]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.33it/s]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.22it/s]
-Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.22it/s]
-Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.33it/s]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.22it/s]
-Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.33it/s]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.33it/s]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.22it/s]
-Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.22it/s]
-Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.33it/s]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.22it/s]
-Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.33it/s]Calibrating: 100%|██████████| 2/2 [00:01<00:00,  1.22it/s]
-校准完成，收集5568层量化参数
-校准完成，收集5568层量化参数
-校准完成，收集5568层量化参数
-校准完成，收集5568层量化参数
-校准完成，收集5568层量化参数
-校准完成，收集5568层量化参数
-校准完成，收集5568层量化参数
-校准完成，收集5568层量化参数
-执行步骤: quantization（仅主进程执行）
-Quantizing:   0%|          | 0/5568 [00:00<?, ?it/s]Quantizing:   0%|          | 0/5568 [00:00<?, ?it/s]Quantizing:   0%|          | 0/5568 [00:00<?, ?it/s]Quantizing:   0%|          | 0/5568 [00:00<?, ?it/s]Quantizing:   0%|          | 0/5568 [00:00<?, ?it/s]Quantizing:   0%|          | 0/5568 [00:00<?, ?it/s]Quantizing:   0%|          | 0/5568 [00:00<?, ?it/s]Quantizing:   0%|          | 0/5568 [00:00<?, ?it/s]Quantizing:   2%|▏         | 121/5568 [00:00<00:04, 1209.57it/s]Quantizing:   2%|▏         | 121/5568 [00:00<00:04, 1207.87it/s]Quantizing:   2%|▏         | 124/5568 [00:00<00:04, 1237.66it/s]Quantizing:   2%|▏         | 122/5568 [00:00<00:04, 1215.72it/s]Quantizing:   2%|▏         | 123/5568 [00:00<00:04, 1224.93it/s]Quantizing:   2%|▏         | 125/5568 [00:00<00:04, 1242.53it/s]Quantizing:   2%|▏         | 125/5568 [00:00<00:04, 1240.16it/s]Quantizing:   2%|▏         | 122/5568 [00:00<00:04, 1208.96it/s]Quantizing:   4%|▍         | 243/5568 [00:00<00:04, 1125.01it/s]Quantizing:   4%|▍         | 242/5568 [00:00<00:04, 1112.01it/s]Quantizing:   4%|▍         | 244/5568 [00:00<00:04, 1111.64it/s]Quantizing:   4%|▍         | 242/5568 [00:00<00:04, 1098.96it/s]Quantizing:   4%|▍         | 248/5568 [00:00<00:04, 1122.52it/s]Quantizing:   4%|▍         | 246/5568 [00:00<00:04, 1095.65it/s]Quantizing:   4%|▍         | 250/5568 [00:00<00:04, 1107.64it/s]Quantizing:   4%|▍         | 250/5568 [00:00<00:04, 1108.42it/s]Quantizing:   6%|▋         | 353/5568 [00:00<00:04, 1083.60it/s]Quantizing:   6%|▋         | 356/5568 [00:00<00:04, 1082.95it/s]Quantizing:   6%|▋         | 354/5568 [00:00<00:04, 1075.92it/s]Quantizing:   6%|▋         | 356/5568 [00:00<00:04, 1069.43it/s]Quantizing:   6%|▋         | 357/5568 [00:00<00:04, 1075.68it/s]Quantizing:   6%|▋         | 361/5568 [00:00<00:04, 1074.42it/s]Quantizing:   7%|▋         | 362/5568 [00:00<00:04, 1079.01it/s]Quantizing:   7%|▋         | 362/5568 [00:00<00:04, 1076.79it/s]Quantizing:   8%|▊         | 462/5568 [00:00<00:04, 1072.30it/s]Quantizing:   8%|▊         | 462/5568 [00:00<00:04, 1054.49it/s]Quantizing:   8%|▊         | 465/5568 [00:00<00:04, 1063.54it/s]Quantizing:   8%|▊         | 465/5568 [00:00<00:04, 1057.29it/s]Quantizing:   8%|▊         | 464/5568 [00:00<00:04, 1054.28it/s]Quantizing:   8%|▊         | 471/5568 [00:00<00:04, 1074.17it/s]Quantizing:   8%|▊         | 469/5568 [00:00<00:04, 1064.62it/s]Quantizing:   8%|▊         | 471/5568 [00:00<00:04, 1069.06it/s]Quantizing:  10%|█         | 571/5568 [00:00<00:04, 1055.18it/s]Quantizing:  10%|█         | 571/5568 [00:00<00:04, 1057.35it/s]Quantizing:  10%|█         | 568/5568 [00:00<00:04, 1046.11it/s]Quantizing:  10%|█         | 570/5568 [00:00<00:04, 1046.19it/s]Quantizing:  10%|█         | 576/5568 [00:00<00:04, 1061.22it/s]Quantizing:  10%|█         | 572/5568 [00:00<00:04, 1049.58it/s]Quantizing:  10%|█         | 579/5568 [00:00<00:04, 1060.99it/s]Quantizing:  10%|█         | 579/5568 [00:00<00:04, 1058.55it/s]Quantizing:  12%|█▏        | 673/5568 [00:00<00:04, 1047.17it/s]Quantizing:  12%|█▏        | 675/5568 [00:00<00:04, 1045.96it/s]Quantizing:  12%|█▏        | 677/5568 [00:00<00:04, 1049.60it/s]Quantizing:  12%|█▏        | 677/5568 [00:00<00:04, 1049.26it/s]Quantizing:  12%|█▏        | 679/5568 [00:00<00:04, 1053.70it/s]Quantizing:  12%|█▏        | 683/5568 [00:00<00:04, 1048.92it/s]Quantizing:  12%|█▏        | 686/5568 [00:00<00:04, 1053.74it/s]Quantizing:  12%|█▏        | 685/5568 [00:00<00:04, 1043.07it/s]Quantizing:  14%|█▍        | 780/5568 [00:00<00:04, 1046.25it/s]Quantizing:  14%|█▍        | 782/5568 [00:00<00:04, 1045.34it/s]Quantizing:  14%|█▍        | 778/5568 [00:00<00:04, 1040.66it/s]Quantizing:  14%|█▍        | 783/5568 [00:00<00:04, 1052.08it/s]Quantizing:  14%|█▍        | 785/5568 [00:00<00:04, 1049.45it/s]Quantizing:  14%|█▍        | 788/5568 [00:00<00:04, 1046.37it/s]Quantizing:  14%|█▍        | 792/5568 [00:00<00:04, 1049.00it/s]Quantizing:  14%|█▍        | 792/5568 [00:00<00:04, 1046.50it/s]Quantizing:  16%|█▌        | 888/5568 [00:00<00:04, 1048.29it/s]Quantizing:  16%|█▌        | 885/5568 [00:00<00:04, 1041.66it/s]Quantizing:  16%|█▌        | 889/5568 [00:00<00:04, 1052.44it/s]Quantizing:  16%|█▌        | 885/5568 [00:00<00:04, 1046.07it/s]Quantizing:  16%|█▌        | 890/5568 [00:00<00:04, 1043.93it/s]Quantizing:  16%|█▌        | 893/5568 [00:00<00:04, 1042.14it/s]Quantizing:  16%|█▌        | 899/5568 [00:00<00:04, 1053.50it/s]Quantizing:  16%|█▌        | 898/5568 [00:00<00:04, 1050.18it/s]Quantizing:  18%|█▊        | 990/5568 [00:00<00:04, 1041.84it/s]Quantizing:  18%|█▊        | 990/5568 [00:00<00:04, 1044.20it/s]Quantizing:  18%|█▊        | 993/5568 [00:00<00:04, 1039.38it/s]Quantizing:  18%|█▊        | 995/5568 [00:00<00:04, 1045.13it/s]Quantizing:  18%|█▊        | 995/5568 [00:00<00:04, 1042.76it/s]Quantizing:  18%|█▊        | 999/5568 [00:00<00:04, 1047.48it/s]Quantizing:  18%|█▊        | 1005/5568 [00:00<00:04, 1050.04it/s]Quantizing:  18%|█▊        | 1004/5568 [00:00<00:04, 1047.67it/s]Quantizing:  20%|█▉        | 1095/5568 [00:01<00:04, 1044.27it/s]Quantizing:  20%|█▉        | 1096/5568 [00:01<00:04, 1048.02it/s]Quantizing:  20%|█▉        | 1099/5568 [00:01<00:04, 1042.96it/s]Quantizing:  20%|█▉        | 1100/5568 [00:01<00:04, 1044.09it/s]Quantizing:  20%|█▉        | 1100/5568 [00:01<00:04, 1044.76it/s]Quantizing:  20%|█▉        | 1104/5568 [00:01<00:04, 1039.08it/s]Quantizing:  20%|█▉        | 1111/5568 [00:01<00:04, 1046.15it/s]Quantizing:  20%|█▉        | 1109/5568 [00:01<00:04, 1033.67it/s]Quantizing:  22%|██▏       | 1200/5568 [00:01<00:04, 1038.99it/s]Quantizing:  22%|██▏       | 1201/5568 [00:01<00:04, 1041.03it/s]Quantizing:  22%|██▏       | 1204/5568 [00:01<00:04, 1040.96it/s]Quantizing:  22%|██▏       | 1209/5568 [00:01<00:04, 1035.70it/s]Quantizing:  22%|██▏       | 1205/5568 [00:01<00:04, 1026.70it/s]Quantizing:  22%|██▏       | 1205/5568 [00:01<00:04, 1029.21it/s]Quantizing:  22%|██▏       | 1216/5568 [00:01<00:04, 994.66it/s] Quantizing:  22%|██▏       | 1213/5568 [00:01<00:04, 989.22it/s] Quantizing:  23%|██▎       | 1304/5568 [00:01<00:04, 1037.93it/s]Quantizing:  23%|██▎       | 1306/5568 [00:01<00:04, 1040.54it/s]Quantizing:  24%|██▎       | 1310/5568 [00:01<00:04, 1017.16it/s]Quantizing:  24%|██▎       | 1313/5568 [00:01<00:04, 1024.10it/s]Quantizing:  24%|██▎       | 1309/5568 [00:01<00:04, 1006.40it/s]Quantizing:  24%|██▎       | 1313/5568 [00:01<00:04, 1013.57it/s]Quantizing:  24%|██▎       | 1320/5568 [00:01<00:04, 978.36it/s]Quantizing:  24%|██▎       | 1317/5568 [00:01<00:04, 977.74it/s]Quantizing:  25%|██▌       | 1410/5568 [00:01<00:04, 876.17it/s] Quantizing:  25%|██▌       | 1416/5568 [00:01<00:04, 889.20it/s] Quantizing:  25%|██▌       | 1412/5568 [00:01<00:04, 881.39it/s] Quantizing:  25%|██▌       | 1415/5568 [00:01<00:04, 882.81it/s] Quantizing:  25%|██▌       | 1408/5568 [00:01<00:04, 866.49it/s] Quantizing:  25%|██▌       | 1419/5568 [00:01<00:04, 896.96it/s]Quantizing:  25%|██▌       | 1411/5568 [00:01<00:04, 868.42it/s] Quantizing:  25%|██▌       | 1416/5568 [00:01<00:04, 880.73it/s]Quantizing:  27%|██▋       | 1528/5568 [00:01<00:04, 956.85it/s]Quantizing:  27%|██▋       | 1531/5568 [00:01<00:04, 963.68it/s]Quantizing:  28%|██▊       | 1535/5568 [00:01<00:04, 968.30it/s]Quantizing:  27%|██▋       | 1530/5568 [00:01<00:04, 952.18it/s]Quantizing:  28%|██▊       | 1532/5568 [00:01<00:04, 963.67it/s]Quantizing:  28%|██▊       | 1540/5568 [00:01<00:04, 979.81it/s]Quantizing:  28%|██▊       | 1533/5568 [00:01<00:04, 960.25it/s]Quantizing:  28%|██▊       | 1539/5568 [00:01<00:04, 972.27it/s]Quantizing:  29%|██▉       | 1632/5568 [00:01<00:04, 978.53it/s]Quantizing:  29%|██▉       | 1638/5568 [00:01<00:03, 984.44it/s]Quantizing:  29%|██▉       | 1638/5568 [00:01<00:03, 991.04it/s]Quantizing:  29%|██▉       | 1638/5568 [00:01<00:03, 986.10it/s]Quantizing:  29%|██▉       | 1636/5568 [00:01<00:03, 983.91it/s]Quantizing:  29%|██▉       | 1635/5568 [00:01<00:04, 976.45it/s]Quantizing:  30%|██▉       | 1645/5568 [00:01<00:03, 997.13it/s]Quantizing:  30%|██▉       | 1645/5568 [00:01<00:03, 993.33it/s]Quantizing:  31%|███       | 1737/5568 [00:01<00:03, 998.30it/s]Quantizing:  31%|███▏      | 1746/5568 [00:01<00:03, 1010.76it/s]Quantizing:  31%|███       | 1739/5568 [00:01<00:03, 996.66it/s]Quantizing:  31%|███▏      | 1743/5568 [00:01<00:03, 1005.67it/s]Quantizing:  31%|███▏      | 1745/5568 [00:01<00:03, 1008.09it/s]Quantizing:  31%|███▏      | 1741/5568 [00:01<00:03, 998.78it/s]Quantizing:  31%|███▏      | 1752/5568 [00:01<00:03, 1016.05it/s]Quantizing:  31%|███▏      | 1748/5568 [00:01<00:03, 1003.40it/s]Quantizing:  33%|███▎      | 1844/5568 [00:01<00:03, 1017.41it/s]Quantizing:  33%|███▎      | 1845/5568 [00:01<00:03, 1014.20it/s]Quantizing:  33%|███▎      | 1849/5568 [00:01<00:03, 1012.34it/s]Quantizing:  33%|███▎      | 1848/5568 [00:01<00:03, 1011.94it/s]Quantizing:  33%|███▎      | 1846/5568 [00:01<00:03, 1008.31it/s]Quantizing:  33%|███▎      | 1845/5568 [00:01<00:03, 1009.73it/s]Quantizing:  33%|███▎      | 1857/5568 [00:01<00:03, 1024.33it/s]Quantizing:  33%|███▎      | 1854/5568 [00:01<00:03, 1017.60it/s]Quantizing:  35%|███▍      | 1948/5568 [00:01<00:03, 1020.56it/s]Quantizing:  35%|███▌      | 1949/5568 [00:01<00:03, 1020.56it/s]Quantizing:  35%|███▌      | 1957/5568 [00:01<00:03, 1030.18it/s]Quantizing:  35%|███▌      | 1951/5568 [00:01<00:03, 1016.89it/s]Quantizing:  35%|███▌      | 1950/5568 [00:01<00:03, 1017.28it/s]Quantizing:  35%|███▌      | 1950/5568 [00:01<00:03, 1019.83it/s]Quantizing:  35%|███▌      | 1961/5568 [00:01<00:03, 973.45it/s] Quantizing:  35%|███▌      | 1957/5568 [00:01<00:03, 973.24it/s] Quantizing:  37%|███▋      | 2053/5568 [00:02<00:03, 1026.24it/s]Quantizing:  37%|███▋      | 2053/5568 [00:02<00:03, 1026.10it/s]Quantizing:  37%|███▋      | 2058/5568 [00:02<00:03, 1032.29it/s]Quantizing:  37%|███▋      | 2057/5568 [00:02<00:03, 1031.04it/s]Quantizing:  37%|███▋      | 2061/5568 [00:02<00:03, 1025.51it/s]Quantizing:  37%|███▋      | 2055/5568 [00:02<00:03, 1027.00it/s]Quantizing:  37%|███▋      | 2084/5568 [00:02<00:03, 1045.09it/s]Quantizing:  37%|███▋      | 2081/5568 [00:02<00:03, 1047.25it/s]Quantizing:  39%|███▉      | 2158/5568 [00:02<00:03, 1032.97it/s]Quantizing:  39%|███▊      | 2157/5568 [00:02<00:03, 1026.71it/s]Quantizing:  39%|███▉      | 2161/5568 [00:02<00:03, 1032.70it/s]Quantizing:  39%|███▉      | 2162/5568 [00:02<00:03, 1031.32it/s]Quantizing:  39%|███▉      | 2169/5568 [00:02<00:03, 1040.77it/s]Quantizing:  39%|███▉      | 2160/5568 [00:02<00:03, 1033.10it/s]Quantizing:  39%|███▉      | 2190/5568 [00:02<00:03, 1044.18it/s]Quantizing:  39%|███▉      | 2187/5568 [00:02<00:03, 1046.17it/s]Quantizing:  41%|████      | 2262/5568 [00:02<00:03, 1033.20it/s]Quantizing:  41%|████      | 2262/5568 [00:02<00:03, 1032.88it/s]Quantizing:  41%|████      | 2269/5568 [00:02<00:03, 1042.23it/s]Quantizing:  41%|████      | 2265/5568 [00:02<00:03, 1033.08it/s]Quantizing:  41%|████      | 2274/5568 [00:02<00:03, 1039.70it/s]Quantizing:  41%|████      | 2264/5568 [00:02<00:03, 1029.80it/s]Quantizing:  41%|████      | 2296/5568 [00:02<00:03, 1047.49it/s]Quantizing:  41%|████      | 2293/5568 [00:02<00:03, 1026.68it/s]Quantizing:  42%|████▏     | 2366/5568 [00:02<00:03, 1032.92it/s]Quantizing:  43%|████▎     | 2367/5568 [00:02<00:03, 1034.72it/s]Quantizing:  43%|████▎     | 2370/5568 [00:02<00:03, 1035.35it/s]Quantizing:  43%|████▎     | 2374/5568 [00:02<00:03, 1036.85it/s]Quantizing:  43%|████▎     | 2379/5568 [00:02<00:03, 1039.39it/s]Quantizing:  43%|████▎     | 2369/5568 [00:02<00:03, 1033.82it/s]Quantizing:  43%|████▎     | 2402/5568 [00:02<00:03, 1037.41it/s]Quantizing:  43%|████▎     | 2399/5568 [00:02<00:03, 1034.96it/s]Quantizing:  44%|████▍     | 2470/5568 [00:02<00:03, 1030.17it/s]Quantizing:  44%|████▍     | 2472/5568 [00:02<00:02, 1036.22it/s]Quantizing:  44%|████▍     | 2475/5568 [00:02<00:02, 1038.46it/s]Quantizing:  45%|████▍     | 2478/5568 [00:02<00:02, 1036.74it/s]Quantizing:  45%|████▍     | 2484/5568 [00:02<00:02, 1042.37it/s]Quantizing:  44%|████▍     | 2473/5568 [00:02<00:02, 1032.88it/s]Quantizing:  45%|████▌     | 2508/5568 [00:02<00:02, 1043.78it/s]Quantizing:  45%|████▍     | 2505/5568 [00:02<00:02, 1042.00it/s]Quantizing:  46%|████▋     | 2580/5568 [00:02<00:02, 1041.43it/s]Quantizing:  46%|████▌     | 2575/5568 [00:02<00:02, 1034.90it/s]Quantizing:  46%|████▋     | 2576/5568 [00:02<00:02, 1035.11it/s]Quantizing:  46%|████▋     | 2582/5568 [00:02<00:02, 1036.65it/s]Quantizing:  46%|████▋     | 2589/5568 [00:02<00:02, 1044.54it/s]Quantizing:  46%|████▋     | 2579/5568 [00:02<00:02, 1039.48it/s]Quantizing:  47%|████▋     | 2614/5568 [00:02<00:02, 1046.77it/s]Quantizing:  47%|████▋     | 2610/5568 [00:02<00:02, 1041.59it/s]Quantizing:  48%|████▊     | 2679/5568 [00:02<00:02, 1035.25it/s]Quantizing:  48%|████▊     | 2681/5568 [00:02<00:02, 1037.44it/s]Quantizing:  48%|████▊     | 2685/5568 [00:02<00:02, 1039.14it/s]Quantizing:  48%|████▊     | 2688/5568 [00:02<00:02, 1042.55it/s]Quantizing:  48%|████▊     | 2694/5568 [00:02<00:02, 1041.59it/s]Quantizing:  48%|████▊     | 2684/5568 [00:02<00:02, 1035.74it/s]Quantizing:  49%|████▉     | 2719/5568 [00:02<00:02, 1043.07it/s]Quantizing:  49%|████▉     | 2715/5568 [00:02<00:02, 1039.84it/s]Quantizing:  50%|█████     | 2784/5568 [00:02<00:02, 1037.26it/s]Quantizing:  50%|█████     | 2785/5568 [00:02<00:02, 1036.49it/s]Quantizing:  50%|█████     | 2789/5568 [00:02<00:02, 1036.07it/s]Quantizing:  50%|█████     | 2794/5568 [00:02<00:02, 1044.23it/s]Quantizing:  50%|█████     | 2801/5568 [00:02<00:02, 1047.86it/s]Quantizing:  50%|█████     | 2789/5568 [00:02<00:02, 1038.60it/s]Quantizing:  51%|█████     | 2825/5568 [00:02<00:02, 1045.83it/s]Quantizing:  51%|█████     | 2820/5568 [00:02<00:02, 1036.08it/s]Quantizing:  52%|█████▏    | 2889/5568 [00:02<00:02, 1040.93it/s]Quantizing:  52%|█████▏    | 2891/5568 [00:02<00:02, 1040.84it/s]Quantizing:  52%|█████▏    | 2893/5568 [00:02<00:02, 1034.87it/s]Quantizing:  52%|█████▏    | 2899/5568 [00:02<00:02, 1037.73it/s]Quantizing:  52%|█████▏    | 2906/5568 [00:02<00:02, 1042.20it/s]Quantizing:  52%|█████▏    | 2894/5568 [00:02<00:02, 1039.77it/s]Quantizing:  53%|█████▎    | 2930/5568 [00:02<00:02, 1045.12it/s]Quantizing:  53%|█████▎    | 2928/5568 [00:02<00:02, 1046.92it/s]Quantizing:  54%|█████▍    | 2996/5568 [00:02<00:02, 1043.10it/s]Quantizing:  54%|█████▍    | 2994/5568 [00:02<00:02, 1037.80it/s]Quantizing:  54%|█████▍    | 2999/5568 [00:02<00:02, 1040.16it/s]Quantizing:  54%|█████▍    | 3005/5568 [00:02<00:02, 1041.28it/s]Quantizing:  54%|█████▍    | 3000/5568 [00:02<00:02, 1045.63it/s]Quantizing:  54%|█████▍    | 3011/5568 [00:02<00:02, 1038.72it/s]Quantizing:  55%|█████▍    | 3035/5568 [00:02<00:02, 1043.84it/s]Quantizing:  54%|█████▍    | 3033/5568 [00:02<00:02, 1037.80it/s]Quantizing:  56%|█████▌    | 3101/5568 [00:03<00:02, 1042.70it/s]Quantizing:  56%|█████▌    | 3099/5568 [00:03<00:02, 1038.10it/s]Quantizing:  56%|█████▌    | 3104/5568 [00:03<00:02, 1037.54it/s]Quantizing:  56%|█████▌    | 3111/5568 [00:03<00:02, 1044.54it/s]Quantizing:  56%|█████▌    | 3115/5568 [00:03<00:02, 1037.60it/s]Quantizing:  56%|█████▌    | 3105/5568 [00:03<00:02, 1038.98it/s]Quantizing:  56%|█████▋    | 3140/5568 [00:03<00:02, 1039.72it/s]Quantizing:  56%|█████▋    | 3138/5568 [00:03<00:02, 1040.53it/s]Quantizing:  58%|█████▊    | 3204/5568 [00:03<00:02, 1041.59it/s]Quantizing:  58%|█████▊    | 3206/5568 [00:03<00:02, 1038.54it/s]Quantizing:  58%|█████▊    | 3208/5568 [00:03<00:02, 1037.31it/s]Quantizing:  58%|█████▊    | 3220/5568 [00:03<00:02, 1039.05it/s]Quantizing:  58%|█████▊    | 3216/5568 [00:03<00:02, 1039.18it/s]Quantizing:  58%|█████▊    | 3209/5568 [00:03<00:02, 1039.24it/s]Quantizing:  58%|█████▊    | 3246/5568 [00:03<00:02, 1043.18it/s]Quantizing:  58%|█████▊    | 3243/5568 [00:03<00:02, 1043.11it/s]Quantizing:  59%|█████▉    | 3309/5568 [00:03<00:02, 1042.12it/s]Quantizing:  59%|█████▉    | 3310/5568 [00:03<00:02, 1036.99it/s]Quantizing:  60%|█████▉    | 3314/5568 [00:03<00:02, 1042.33it/s]Quantizing:  60%|█████▉    | 3326/5568 [00:03<00:02, 1045.18it/s]Quantizing:  60%|█████▉    | 3321/5568 [00:03<00:02, 1042.15it/s]Quantizing:  60%|█████▉    | 3314/5568 [00:03<00:02, 1040.85it/s]Quantizing:  60%|██████    | 3351/5568 [00:03<00:02, 1042.81it/s]Quantizing:  60%|██████    | 3348/5568 [00:03<00:02, 1044.88it/s]Quantizing:  61%|██████▏   | 3414/5568 [00:03<00:02, 1039.78it/s]Quantizing:  61%|██████▏   | 3416/5568 [00:03<00:02, 1043.17it/s]Quantizing:  61%|██████▏   | 3419/5568 [00:03<00:02, 1040.49it/s]Quantizing:  62%|██████▏   | 3431/5568 [00:03<00:02, 1045.39it/s]Quantizing:  62%|██████▏   | 3426/5568 [00:03<00:02, 1044.05it/s]Quantizing:  61%|██████▏   | 3419/5568 [00:03<00:02, 1037.81it/s]Quantizing:  62%|██████▏   | 3456/5568 [00:03<00:02, 1041.23it/s]Quantizing:  62%|██████▏   | 3453/5568 [00:03<00:02, 1045.50it/s]Quantizing:  63%|██████▎   | 3521/5568 [00:03<00:02, 985.81it/s] Quantizing:  63%|██████▎   | 3524/5568 [00:03<00:02, 988.40it/s] Quantizing:  63%|██████▎   | 3518/5568 [00:03<00:02, 979.50it/s] Quantizing:  63%|██████▎   | 3531/5568 [00:03<00:02, 990.82it/s] Quantizing:  63%|██████▎   | 3523/5568 [00:03<00:02, 989.92it/s] Quantizing:  64%|██████▎   | 3536/5568 [00:03<00:02, 990.40it/s] Quantizing:  64%|██████▍   | 3561/5568 [00:03<00:02, 991.03it/s] Quantizing:  64%|██████▍   | 3558/5568 [00:03<00:01, 1013.88it/s]Quantizing:  65%|██████▌   | 3621/5568 [00:03<00:02, 940.75it/s]Quantizing:  65%|██████▌   | 3631/5568 [00:03<00:02, 948.17it/s]Quantizing:  65%|██████▍   | 3617/5568 [00:03<00:02, 933.86it/s]Quantizing:  65%|██████▌   | 3636/5568 [00:03<00:02, 915.51it/s]Quantizing:  65%|██████▌   | 3623/5568 [00:03<00:02, 911.83it/s]Quantizing:  65%|██████▌   | 3624/5568 [00:03<00:02, 903.93it/s]Quantizing:  66%|██████▌   | 3661/5568 [00:03<00:02, 886.89it/s]Quantizing:  66%|██████▌   | 3660/5568 [00:03<00:02, 895.49it/s] Quantizing:  67%|██████▋   | 3719/5568 [00:03<00:01, 950.81it/s]Quantizing:  67%|██████▋   | 3736/5568 [00:03<00:01, 974.75it/s]Quantizing:  67%|██████▋   | 3720/5568 [00:03<00:01, 959.46it/s]Quantizing:  67%|██████▋   | 3755/5568 [00:03<00:01, 990.32it/s]Quantizing:  67%|██████▋   | 3742/5568 [00:03<00:01, 987.06it/s]Quantizing:  67%|██████▋   | 3743/5568 [00:03<00:01, 980.50it/s]Quantizing:  68%|██████▊   | 3800/5568 [00:03<00:01, 1021.62it/s]Quantizing:  68%|██████▊   | 3797/5568 [00:03<00:01, 1020.42it/s]Quantizing:  69%|██████▉   | 3836/5568 [00:03<00:01, 1012.77it/s]Quantizing:  69%|██████▉   | 3848/5568 [00:03<00:01, 1016.12it/s]Quantizing:  69%|██████▉   | 3832/5568 [00:03<00:01, 1004.73it/s]Quantizing:  69%|██████▉   | 3867/5568 [00:03<00:01, 1025.28it/s]Quantizing:  69%|██████▉   | 3851/5568 [00:03<00:01, 1014.01it/s]Quantizing:  69%|██████▉   | 3853/5568 [00:03<00:01, 1012.23it/s]Quantizing:  70%|███████   | 3907/5568 [00:03<00:01, 1033.29it/s]Quantizing:  70%|███████   | 3903/5568 [00:03<00:01, 1021.29it/s]Quantizing:  71%|███████   | 3943/5568 [00:03<00:01, 1028.25it/s]Quantizing:  71%|███████   | 3951/5568 [00:03<00:01, 1019.10it/s]Quantizing:  71%|███████   | 3938/5568 [00:03<00:01, 1019.32it/s]Quantizing:  71%|███████   | 3954/5568 [00:03<00:01, 1018.09it/s]Quantizing:  71%|███████▏  | 3971/5568 [00:03<00:01, 1023.55it/s]Quantizing:  71%|███████   | 3956/5568 [00:03<00:01, 1013.39it/s]Quantizing:  72%|███████▏  | 4013/5568 [00:03<00:01, 1025.35it/s]Quantizing:  72%|███████▏  | 4009/5568 [00:03<00:01, 1031.40it/s]Quantizing:  73%|███████▎  | 4043/5568 [00:03<00:01, 1027.04it/s]Quantizing:  73%|███████▎  | 4047/5568 [00:03<00:01, 1027.83it/s]Quantizing:  73%|███████▎  | 4056/5568 [00:03<00:01, 987.04it/s] Quantizing:  73%|███████▎  | 4057/5568 [00:03<00:01, 994.56it/s] Quantizing:  73%|███████▎  | 4075/5568 [00:03<00:01, 1000.23it/s]Quantizing:  73%|███████▎  | 4059/5568 [00:03<00:01, 989.32it/s] Quantizing:  74%|███████▍  | 4118/5568 [00:04<00:01, 1030.76it/s]Quantizing:  74%|███████▍  | 4114/5568 [00:04<00:01, 1031.23it/s]Quantizing:  75%|███████▍  | 4151/5568 [00:04<00:01, 1028.67it/s]Quantizing:  74%|███████▍  | 4147/5568 [00:04<00:01, 1022.35it/s]Quantizing:  75%|███████▌  | 4181/5568 [00:04<00:01, 1061.00it/s]Quantizing:  75%|███████▍  | 4173/5568 [00:04<00:01, 1041.13it/s]Quantizing:  75%|███████▌  | 4191/5568 [00:04<00:01, 1044.14it/s]Quantizing:  75%|███████▌  | 4176/5568 [00:04<00:01, 1039.48it/s]Quantizing:  76%|███████▌  | 4223/5568 [00:04<00:01, 1034.72it/s]Quantizing:  76%|███████▌  | 4220/5568 [00:04<00:01, 1036.74it/s]Quantizing:  76%|███████▋  | 4253/5568 [00:04<00:01, 1032.94it/s]Quantizing:  76%|███████▋  | 4255/5568 [00:04<00:01, 1025.85it/s]Quantizing:  77%|███████▋  | 4288/5568 [00:04<00:01, 1047.22it/s]Quantizing:  77%|███████▋  | 4278/5568 [00:04<00:01, 1037.45it/s]Quantizing:  77%|███████▋  | 4297/5568 [00:04<00:01, 1043.26it/s]Quantizing:  77%|███████▋  | 4281/5568 [00:04<00:01, 1038.31it/s]Quantizing:  78%|███████▊  | 4328/5568 [00:04<00:01, 1038.77it/s]Quantizing:  78%|███████▊  | 4325/5568 [00:04<00:01, 1035.11it/s]Quantizing:  78%|███████▊  | 4361/5568 [00:04<00:01, 1035.10it/s]Quantizing:  78%|███████▊  | 4357/5568 [00:04<00:01, 1032.54it/s]Quantizing:  79%|███████▉  | 4394/5568 [00:04<00:01, 1046.13it/s]Quantizing:  79%|███████▉  | 4403/5568 [00:04<00:01, 1048.14it/s]Quantizing:  79%|███████▉  | 4385/5568 [00:04<00:01, 1044.72it/s]Quantizing:  79%|███████▉  | 4388/5568 [00:04<00:01, 1046.25it/s]Quantizing:  80%|███████▉  | 4433/5568 [00:04<00:01, 1041.96it/s]Quantizing:  80%|███████▉  | 4430/5568 [00:04<00:01, 1036.96it/s]Quantizing:  80%|████████  | 4465/5568 [00:04<00:01, 1035.71it/s]Quantizing:  80%|████████  | 4461/5568 [00:04<00:01, 1034.34it/s]Quantizing:  81%|████████  | 4500/5568 [00:04<00:01, 1047.82it/s]Quantizing:  81%|████████  | 4490/5568 [00:04<00:01, 1043.54it/s]Quantizing:  81%|████████  | 4509/5568 [00:04<00:01, 1047.20it/s]Quantizing:  81%|████████  | 4494/5568 [00:04<00:01, 1038.26it/s]Quantizing:  81%|████████▏ | 4535/5568 [00:05<00:04, 211.86it/s] Quantizing:  83%|████████▎ | 4611/5568 [00:05<00:03, 243.95it/s]Quantizing:  82%|████████▏ | 4538/5568 [00:05<00:05, 192.68it/s] Quantizing:  83%|████████▎ | 4606/5568 [00:05<00:04, 202.39it/s] Quantizing:  83%|████████▎ | 4614/5568 [00:05<00:04, 200.77it/s] Quantizing:  82%|████████▏ | 4565/5568 [00:05<00:05, 193.90it/s] Quantizing:  83%|████████▎ | 4599/5568 [00:05<00:04, 199.88it/s] Quantizing:  83%|████████▎ | 4595/5568 [00:05<00:04, 198.59it/s] Quantizing:  82%|████████▏ | 4569/5568 [00:05<00:05, 192.92it/s] Quantizing:  85%|████████▌ | 4744/5568 [00:06<00:02, 288.35it/s]Quantizing:  84%|████████▍ | 4679/5568 [00:06<00:03, 278.67it/s]Quantizing:  85%|████████▌ | 4753/5568 [00:06<00:02, 354.76it/s]Quantizing:  85%|████████▌ | 4743/5568 [00:06<00:02, 281.70it/s]Quantizing:  84%|████████▍ | 4687/5568 [00:06<00:03, 269.48it/s]Quantizing:  85%|████████▍ | 4718/5568 [00:06<00:03, 273.53it/s]Quantizing:  85%|████████▍ | 4717/5568 [00:06<00:03, 274.37it/s]Quantizing:  84%|████████▍ | 4693/5568 [00:06<00:03, 269.53it/s]Quantizing:  86%|████████▌ | 4793/5568 [00:06<00:02, 358.74it/s]Quantizing:  87%|████████▋ | 4857/5568 [00:06<00:01, 364.28it/s]Quantizing:  87%|████████▋ | 4862/5568 [00:06<00:01, 373.50it/s]Quantizing:  87%|████████▋ | 4868/5568 [00:06<00:01, 450.47it/s]Quantizing:  86%|████████▌ | 4801/5568 [00:06<00:02, 352.07it/s]Quantizing:  87%|████████▋ | 4829/5568 [00:06<00:02, 353.72it/s]Quantizing:  87%|████████▋ | 4823/5568 [00:06<00:02, 349.37it/s]Quantizing:  86%|████████▌ | 4797/5568 [00:06<00:02, 342.32it/s]Quantizing:  88%|████████▊ | 4900/5568 [00:06<00:01, 441.83it/s]Quantizing:  89%|████████▉ | 4966/5568 [00:06<00:01, 453.34it/s]Quantizing:  89%|████████▉ | 4960/5568 [00:06<00:01, 444.33it/s]Quantizing:  89%|████████▉ | 4973/5568 [00:06<00:01, 538.36it/s]Quantizing:  88%|████████▊ | 4907/5568 [00:06<00:01, 436.51it/s]Quantizing:  89%|████████▊ | 4933/5568 [00:06<00:01, 436.05it/s]Quantizing:  89%|████████▊ | 4929/5568 [00:06<00:01, 434.79it/s]Quantizing:  88%|████████▊ | 4901/5568 [00:06<00:01, 425.40it/s]Quantizing:  91%|█████████ | 5072/5568 [00:06<00:00, 542.21it/s]Quantizing:  91%|█████████ | 5067/5568 [00:06<00:00, 536.40it/s]Quantizing:  90%|████████▉ | 5005/5568 [00:06<00:01, 528.44it/s]Quantizing:  91%|█████████ | 5078/5568 [00:06<00:00, 626.22it/s]Quantizing:  90%|████████▉ | 5009/5568 [00:06<00:01, 521.01it/s]Quantizing:  90%|█████████ | 5039/5568 [00:06<00:01, 527.65it/s]Quantizing:  90%|█████████ | 5035/5568 [00:06<00:01, 525.84it/s]Quantizing:  90%|████████▉ | 5006/5568 [00:06<00:01, 515.79it/s]Quantizing:  93%|█████████▎| 5175/5568 [00:06<00:00, 626.61it/s]Quantizing:  93%|█████████▎| 5169/5568 [00:06<00:00, 619.97it/s]Quantizing:  92%|█████████▏| 5109/5568 [00:06<00:00, 614.63it/s]Quantizing:  93%|█████████▎| 5183/5568 [00:06<00:00, 709.95it/s]Quantizing:  92%|█████████▏| 5112/5568 [00:06<00:00, 608.07it/s]Quantizing:  92%|█████████▏| 5142/5568 [00:06<00:00, 614.63it/s]Quantizing:  92%|█████████▏| 5138/5568 [00:06<00:00, 612.65it/s]Quantizing:  92%|█████████▏| 5110/5568 [00:06<00:00, 605.62it/s]Quantizing:  95%|█████████▍| 5281/5568 [00:06<00:00, 711.62it/s]Quantizing:  95%|█████████▍| 5277/5568 [00:06<00:00, 710.69it/s]Quantizing:  95%|█████████▍| 5288/5568 [00:06<00:00, 784.56it/s]Quantizing:  94%|█████████▎| 5214/5568 [00:06<00:00, 698.74it/s]Quantizing:  94%|█████████▎| 5219/5568 [00:06<00:00, 697.87it/s]Quantizing:  94%|█████████▍| 5247/5568 [00:06<00:00, 700.23it/s]Quantizing:  94%|█████████▍| 5243/5568 [00:06<00:00, 698.82it/s]Quantizing:  94%|█████████▎| 5215/5568 [00:06<00:00, 692.66it/s]Quantizing:  97%|█████████▋| 5386/5568 [00:06<00:00, 784.70it/s]Quantizing:  97%|█████████▋| 5381/5568 [00:06<00:00, 781.40it/s]Quantizing:  96%|█████████▌| 5320/5568 [00:06<00:00, 776.40it/s]Quantizing:  97%|█████████▋| 5392/5568 [00:06<00:00, 843.86it/s]Quantizing:  96%|█████████▌| 5325/5568 [00:06<00:00, 776.13it/s]Quantizing:  96%|█████████▌| 5350/5568 [00:06<00:00, 772.45it/s]Quantizing:  96%|█████████▌| 5347/5568 [00:06<00:00, 773.71it/s]Quantizing:  96%|█████████▌| 5319/5568 [00:06<00:00, 767.24it/s]Quantizing:  99%|█████████▊| 5491/5568 [00:06<00:00, 847.99it/s]Quantizing:  99%|█████████▊| 5487/5568 [00:06<00:00, 847.12it/s]Quantizing:  99%|█████████▊| 5496/5568 [00:06<00:00, 892.85it/s]Quantizing:  97%|█████████▋| 5428/5568 [00:06<00:00, 846.55it/s]Quantizing:  97%|█████████▋| 5428/5568 [00:06<00:00, 832.98it/s]Quantizing:  98%|█████████▊| 5455/5568 [00:06<00:00, 837.21it/s]Quantizing:  98%|█████████▊| 5451/5568 [00:06<00:00, 836.21it/s]Quantizing:  97%|█████████▋| 5424/5568 [00:06<00:00, 833.29it/s]Quantizing: 100%|██████████| 5568/5568 [00:06<00:00, 820.07it/s]
-量化完成
-Quantizing: 100%|██████████| 5568/5568 [00:06<00:00, 819.52it/s]
-量化完成
-Quantizing: 100%|██████████| 5568/5568 [00:06<00:00, 818.90it/s]
-量化完成
-Quantizing:  99%|█████████▉| 5533/5568 [00:06<00:00, 888.71it/s]Quantizing:  99%|█████████▉| 5533/5568 [00:06<00:00, 886.65it/s]Quantizing: 100%|█████████▉| 5561/5568 [00:06<00:00, 891.85it/s]Quantizing: 100%|█████████▉| 5556/5568 [00:06<00:00, 890.17it/s]Quantizing:  99%|█████████▉| 5529/5568 [00:06<00:00, 887.82it/s]Quantizing: 100%|██████████| 5568/5568 [00:06<00:00, 814.47it/s]
-量化完成
-Quantizing: 100%|██████████| 5568/5568 [00:06<00:00, 813.61it/s]
-量化完成
-Quantizing: 100%|██████████| 5568/5568 [00:06<00:00, 811.94it/s]
-量化完成
-Quantizing: 100%|██████████| 5568/5568 [00:06<00:00, 811.39it/s]
-量化完成
-Quantizing: 100%|██████████| 5568/5568 [00:06<00:00, 810.13it/s]
-量化完成
-执行步骤: save（仅主进程执行）
-量化模型已保存至 ../quantized_model_ds
-量化模型已保存至 ../quantized_model_ds
-量化模型已保存至 ../quantized_model_ds
-量化模型已保存至 ../quantized_model_ds
-量化模型已保存至 ../quantized_model_ds
-量化模型已保存至 ../quantized_model_ds
-量化模型已保存至 ../quantized_model_ds
-[Rank 0] 已生成完整索引，共 109597 个条目
-[Rank 0] 已合并 19170 个act参数
-警告: 源文件 /data00/models/DeepSeek-R1-converted/merges.txt 不存在，跳过复制
-警告: 源文件 /data00/models/DeepSeek-R1-converted/vocab.json 不存在，跳过复制
-[Rank 0] 保存完成，目录: ../quantized_model_ds
-量化模型已保存至 ../quantized_model_ds
-完整量化流程执行完毕
-量化流程执行成功！
-量化流程执行成功！
-量化流程执行成功！
-量化流程执行成功！
-量化流程执行成功！
-量化流程执行成功！
-量化流程执行成功！量化流程执行成功！
-
-[Rank 4] 已关闭分布式进程组
-[Rank 0] 已关闭分布式进程组
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/data00/tjx/quant/test.py", line 53, in <module>
+[rank1]:     main()
+[rank1]:   File "/data00/tjx/quant/test.py", line 42, in main
+[rank1]:     quant_service.run_pipeline(
+[rank1]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 74, in run_pipeline
+[rank1]:     self.processors["load"].process(** load_params)
+[rank1]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 113, in process
+[rank1]:     self.pre_process(model_path, quant_config_path)
+[rank1]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 158, in pre_process
+[rank1]:     self._parse_model_config(model_path)
+[rank1]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 144, in _parse_model_config
+[rank1]:     original_config_path = os.path.join(self.model_path, "config.json")
+[rank1]:                                         ^^^^^^^^^^^^^^^
+[rank1]: AttributeError: 'LoadProcessor' object has no attribute 'model_path'
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/data00/tjx/quant/test.py", line 53, in <module>
+[rank3]:     main()
+[rank3]:   File "/data00/tjx/quant/test.py", line 42, in main
+[rank3]:     quant_service.run_pipeline(
+[rank3]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 74, in run_pipeline
+[rank3]:     self.processors["load"].process(** load_params)
+[rank3]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 113, in process
+[rank3]:     self.pre_process(model_path, quant_config_path)
+[rank3]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 158, in pre_process
+[rank3]:     self._parse_model_config(model_path)
+[rank3]:   File "/data00/tjx/quant/quant_service/quant_service.py", line 144, in _parse_model_config
+[rank3]:     original_config_path = os.path.join(self.model_path, "config.json")
+[rank3]:                                         ^^^^^^^^^^^^^^^
+[rank3]: AttributeError: 'LoadProcessor' object has no attribute 'model_path'
 [Rank 3] 已关闭分布式进程组
-[Rank 2] 已关闭分布式进程组
-[Rank 1] 已关闭分布式进程组
 [Rank 7] 已关闭分布式进程组
-[Rank 6] 已关闭分布式进程组
 [Rank 5] 已关闭分布式进程组
+[Rank 0] 已关闭分布式进程组
+W0909 08:05:56.956000 2526692 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2526783 closing signal SIGTERM
+W0909 08:05:56.956000 2526692 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2526784 closing signal SIGTERM
+W0909 08:05:56.957000 2526692 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2526785 closing signal SIGTERM
+W0909 08:05:56.957000 2526692 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2526787 closing signal SIGTERM
+W0909 08:05:56.958000 2526692 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2526788 closing signal SIGTERM
+W0909 08:05:56.958000 2526692 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2526789 closing signal SIGTERM
+W0909 08:05:56.958000 2526692 torch/distributed/elastic/multiprocessing/api.py:900] Sending process 2526790 closing signal SIGTERM
+E0909 08:05:57.450000 2526692 torch/distributed/elastic/multiprocessing/api.py:874] failed (exitcode: 1) local_rank: 3 (pid: 2526786) of binary: /usr/bin/python3
+Traceback (most recent call last):
+  File "/usr/local/bin/torchrun", line 7, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 357, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/distributed/run.py", line 901, in main
+    run(args)
+  File "/usr/local/lib/python3.12/dist-packages/torch/distributed/run.py", line 892, in run
+    elastic_launch(
+  File "/usr/local/lib/python3.12/dist-packages/torch/distributed/launcher/api.py", line 143, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/distributed/launcher/api.py", line 277, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+test.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2025-09-09_08:05:56
+  host      : iv-ye3txm0nb4bw80cpdz48
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 2526786)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

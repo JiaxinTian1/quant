@@ -134,8 +134,8 @@ class DSV3Model:
 
     def copy_files(self):
         names = [
-            "generation_config.json", "merges.txt",
-            "tokenizer.json", "tokenizer_config.json", "vocab.json",
+            "generation_config.json",
+            "tokenizer.json", "tokenizer_config.json",
             "configuration_deepseek.py", "modeling_deepseek.py"
         ]
         for name in names:

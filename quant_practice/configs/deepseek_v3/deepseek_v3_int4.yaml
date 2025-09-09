@@ -1,9 +1,3 @@
-quant_type: int4
-quant_target: sglang
-original_dtype: bf16
-model_type: deepseekv3
-use_dist: True
-
 global:
   weight:
     enable: False

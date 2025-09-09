@@ -1,57 +1,69 @@
-import os
-import json
-import yaml
-from 
+from quant_service.quant_service import QuantService, QuantParams
+import argparse
 
-
-def load_quant_config(self, config_path: str) -> Dict:
-        """从YAML文件加载量化配置"""
-        with open(config_path, "r", encoding="utf-8") as f:
-            try:
-                return yaml.safe_load(f)
-            except yaml.YAMLError as e:
-                raise ValueError(f"量化配置文件解析错误: {e}")
-
+def parse_args():
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(description="量化服务入口脚本")
+    
+    # 添加需要的命令行参数
+    parser.add_argument(
+        "--model_path", 
+        type=str, 
+        required=True, 
+        help="模型路径"
+    )
+    parser.add_argument(
+        "--save_path", 
+        type=str, 
+        required=True, 
+        help="保存路径"
+    )
+    parser.add_argument(
+        "--quant_type", 
+        type=str, 
+        required=True, 
+        help="量化类型，如 int4、fp8、int4-fp8 等"
+    )
+    parser.add_argument(
+        "--quant_target", 
+        type=str, 
+        required=True, 
+        help="量化目标，可选值: weight、activation、both"
+    )
+    parser.add_argument(
+        "--quant_config_path", 
+        type=str, 
+        default=None,
+        help="量化配置文件路径（可选），如 ./configs/quant.yaml"
+    )
+    parser.add_argument(
+        "--calib_data_path", 
+        type=str, 
+        default=None,
+        help="校准文件路径（可选）"
+    )
+    
+    return parser.parse_args()
 
 def main():
-    """主函数示例"""
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-    # 1. 创建示例配置文件（可选）
-    # create_sample_config()
+    # 解析命令行参数
+    args = parse_args()
     
-    # 2. 定义路径
-    # model_path = "/data/models/Qwen3-8B"
-    # model_path = "/data/models/Qwen3-8B"
-    # model_path = "/data/models/Qwen3-30B-A3B-FP8"
-    model_path = "/data00/models/Qwen3-235B-A22B-FP8"
-    # model_path = "/data00/models/DeepSeek-R1"
-    model_path = "/data00/models/DeepSeek-R1-converted"
-    # model_path = "/data01/models/DeepSeek-V3-5layer"
-    quant_config_path = "./quant_configs/qwen_moe_config.yaml"
-    quant_config_path = "./quant_configs/ds_config.yaml"
-    save_path = "../quantized_model"
-    save_path = "../quantized_model_ds"
-    calib_path = "./datasets/calib.json"
-    calib_path = "./datasets/test.json"
-
-
-
-    # 3. 初始化量化服务
+    # 将解析结果包装成dataclass
+    quant_params = QuantParams(
+        model_path=args.model_path,
+        save_path=args.save_path,
+        quant_type=args.quant_type,
+        quant_target=args.quant_target,
+        quant_config_path=args.quant_config_path,
+        calib_data_path=args.calib_data_path
+    )
+    
+    # 初始化量化服务并传入参数
     quant_service = QuantService()
+    quant_service.quant_params = quant_params
+    quant_service.run_pipeline()
     
-    # 4. 执行量化流程
-    try:
-        with open(calib_path, 'r') as f:
-            calib_data = json.load(f)
-        quant_service.run_pipeline(
-            model_path=model_path,
-            save_path=save_path,
-            quant_config_path=quant_config_path,
-            calib_data=calib_data
-        )
-        print("量化流程执行成功！")
-    except Exception as e:
-        print(f"量化流程执行失败: {e}")
-        raise
 
-main()
+if __name__ == "__main__":
+    main()

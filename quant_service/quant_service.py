@@ -13,17 +13,28 @@ from copy import deepcopy
 from abc import ABC, abstractmethod
 from safetensors.torch import save_file
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch
-
+from dataclasses import dataclass
 
 from quant_tool import QuantizerFactory, HookManager
 from model_saver import ModelSaverFactory
 from model_adapter import ModelAdapterFactory
+from quant_practice import get_default_config_practice, get_default_data_practice
 from .utils import BaseProcessor, DistributedContext, StrategyParser
 
 
 # --------------------------
 # 主控制器
 # --------------------------
+@dataclass
+class QuantParams:
+    model_path: str
+    save_path: str
+    quant_type: str
+    quant_target: str
+    quant_config_path: Optional[str] = None
+    calib_data_path: Optional[str] = None
+
+
 class QuantService:
     """量化服务主控制器，协调所有处理器"""
     def __init__(self):
@@ -31,12 +42,11 @@ class QuantService:
         self.dist_ctx = DistributedContext()
         
         # 核心状态
-        self.model_path = None
-        self.save_path = None
+        self.quant_params = None
+
         self.warpped_model = None
-        self.quant_config = None
+        self.quant_config = {}
         self.dataloader = None
-        self.use_dist = True
         
         # 量化相关状态
         self.strategy_parser = None
@@ -59,25 +69,14 @@ class QuantService:
             "save": SaveProcessor(self)
         }
 
-    def run_pipeline(self, model_path: str, save_path: str, 
-                    quant_config_path: str = None, calib_data: List[str] = None) -> None:
+    def run_pipeline(self) -> None:
         """执行完整量化流程：分离分布式加载与主进程量化步骤"""
-        # 第一步：模型加载（所有rank都执行，确保各rank加载对应分片）
-        load_params = {
-            "model_path": model_path, 
-            "save_path": save_path,
-            "quant_config_path": quant_config_path
-        }
-        if self.dist_ctx.is_main_process():
-            print("执行步骤: load（所有进程同时执行）")
-        # 所有rank共同执行加载步骤（分布式加载）
-        self.processors["load"].process(** load_params)
-        self.dist_ctx.barrier()  # 等待所有rank加载完成
 
         # 后续步骤：仅主进程执行核心量化逻辑，其他进程等待
         pipeline_steps = [
-            ("init", {"calib_data": calib_data}),
+            ("load", {}),
             ("config", {}),
+            ("init", {}),
             ("subgraph", {}),
             ("calibration", {}),
             ("quantization", {}),
@@ -109,22 +108,17 @@ class QuantService:
 # --------------------------
 class LoadProcessor(BaseProcessor):
     """模型加载处理器"""
-    def process(self, model_path: str, save_path: str, quant_config_path: str = None, **kwargs) -> None:
-        self.pre_process(model_path, quant_config_path)
+    def process(self, **kwargs) -> None:
+        model_path = self.quant_service.quant_params.model_path
+        save_path = self.quant_service.quant_params.save_path
+        self.pre_process(model_path)
         
-        # 1. 加载量化配置
-        if quant_config_path:
-            self.quant_service.quant_config = self._load_quant_config(quant_config_path)
-            print(f"已从 {quant_config_path} 加载量化配置")
-        else:
-            print("使用默认量化配置")
-        
-        # 2. 加载模型、分词器和配置
+        # 加载模型、分词器和配置
         print(f"从 {model_path} 加载模型...")
         self.quant_service.model_path = model_path
         self.quant_service.save_path = save_path
         self.quant_service.warpped_model = ModelAdapterFactory.create(
-            model_type=self.quant_service.quant_config["model_type"],
+            model_type=self.quant_service.model_type,
             model_path=model_path,
             save_path=save_path,
             dist_ctx=self.quant_service.dist_ctx
@@ -132,6 +126,45 @@ class LoadProcessor(BaseProcessor):
         
         self.post_process()
 
+
+    def _parse_model_config(self, model_path):
+        original_config_path = os.path.join(model_path, "config.json")
+        with open(original_config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        self.quant_service.model_type = config['model_type']
+        self.quant_service.original_dtype = config['torch_dtype']
+
+    def pre_process(self, model_path: str):
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"模型路径不存在: {model_path}")
+        self._parse_model_config(model_path)
+
+    def post_process(self):
+        print(f"模型加载完成，类型: {type(self.quant_service.warpped_model.model).__name__}")
+
+
+class ConfigProcessor(BaseProcessor):
+    """配置处理器，初始化动态策略解析器"""
+    def process(self, **kwargs) -> None:
+        quant_config_path = self.quant_service.quant_params.quant_config_path
+
+        self.pre_process()
+        if quant_config_path:
+            self.quant_service.quant_config = self._load_quant_config(quant_config_path)
+            print(f"已从 {quant_config_path} 加载量化配置")
+        else:
+            self.quant_service.quant_config = get_default_config_practice(
+                self.quant_service.model_type,
+                self.quant_service.quant_params.quant_type,
+            )
+            print("使用默认量化配置")
+        
+        
+        self.quant_service.quant_config["quant_type"] = self.quant_service.quant_params.quant_type
+        self.quant_service.quant_config["original_dtype"] = self.quant_service.original_dtype
+        
+        self.post_process()
+    
     def _load_quant_config(self, config_path: str) -> Dict:
         """从YAML文件加载量化配置"""
         with open(config_path, "r", encoding="utf-8") as f:
@@ -140,37 +173,36 @@ class LoadProcessor(BaseProcessor):
             except yaml.YAMLError as e:
                 raise ValueError(f"量化配置文件解析错误: {e}")
 
-    def pre_process(self, model_path: str, quant_config_path: Optional[str] = None):
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"模型路径不存在: {model_path}")
-        if quant_config_path and not os.path.exists(quant_config_path):
-            raise FileNotFoundError(f"量化配置文件不存在: {quant_config_path}")
-
     def post_process(self):
-        print(f"模型加载完成，类型: {type(self.quant_service.warpped_model.model).__name__}")
+        # 初始化动态策略解析器
+        self.quant_service.strategy_parser = StrategyParser(
+            quant_config=self.quant_service.quant_config
+        )
+        print("配置解析器初始化完成（动态策略解析）")
 
 
 class InitProcessor(BaseProcessor):
     """初始化处理器"""
-    def process(self, calib_data: List[str], **kwargs) -> None:
+    def process(self, **kwargs) -> None:
         self.pre_process()
         
         # 准备模型（切换为eval模式）
         self.quant_service.warpped_model.model.eval()
         
         # 准备校准数据加载器
-        self.quant_service.dataloader = self._create_calib_dataloader(calib_data)
+        self.quant_service.dataloader = self._create_calib_dataloader()
         
         self.post_process()
 
-    def _create_calib_dataloader(self, calib_data: List[str], batch_size: int = 2) -> List[Dict]:
+    def _create_calib_dataloader(self, batch_size: int = 2) -> List[Dict]:
         """创建校准数据加载器"""
-        if not calib_data:
-            calib_data = [
-                "这是一个用于模型量化的校准样本。",
-                "量化可以显著减少模型大小并加速推理。",
-                "Transformer模型通常包含多个注意力层和前馈网络。"
-            ]
+        calib_data = []
+        calib_data_path = self.quant_service.quant_params.calib_data_path
+        if calib_data_path:
+            calib_data = self._load_calib_data(calib_data_path)
+        else:
+            calib_data = get_default_data_practice()
+            print("使用默认校准集")
         
         dataloader = []
         for i in range(0, len(calib_data), batch_size):
@@ -185,9 +217,19 @@ class InitProcessor(BaseProcessor):
             dataloader.append(inputs)
         
         return dataloader
+    
+    def _load_calib_data(self, data_path: str) -> Dict:
+        """从JSON文件加载校准数据"""
+        with open(data_path, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"校准数据JSON文件解析错误: {e}")
+            except IOError as e:
+                raise ValueError(f"读取校准数据文件失败: {e}")
 
     def pre_process(self):
-        save_path = self.quant_service.save_path
+        save_path = self.quant_service.quant_params.save_path
         if self.quant_service.dist_ctx.is_main_process():
             # 检查目录是否存在
             if os.path.exists(save_path):
@@ -202,35 +244,6 @@ class InitProcessor(BaseProcessor):
 
     def post_process(self):
         print(f"初始化完成，校准数据批次: {len(self.quant_service.dataloader)}")
-
-
-class ConfigProcessor(BaseProcessor):
-    """配置处理器，初始化动态策略解析器"""
-    def process(self, **kwargs) -> None:
-        self.pre_process()
-        
-        # 初始化动态策略解析器
-        self.quant_service.strategy_parser = StrategyParser(
-            quant_config=self.quant_service.quant_config
-        )
-        
-        # 解析通用配置
-        self._parse_general_configs()
-        
-        self.post_process()
-
-    def _parse_general_configs(self) -> None:
-        """解析非层相关的配置"""
-        quant_config = self.quant_service.quant_config
-        self.quant_service.max_layers_per_subgraph = quant_config.get(
-            "max_layers_per_subgraph", 5
-        )
-        self.quant_service.use_dist = quant_config.get("use_dist", False)
-        self.quant_service.quant_type = quant_config.get("quant_type", "fp8")
-        self.quant_service.quant_target = quant_config.get("quant_target", "sglang")
-
-    def post_process(self):
-        print("配置解析器初始化完成（动态策略解析）")
 
 
 class SubgraphProcessor(BaseProcessor):
@@ -363,12 +376,10 @@ class SaveProcessor(BaseProcessor):
         
         self.post_process()
 
-
     def pre_process(self):
         pass
 
-
     def post_process(self):
-        print(f"量化模型已保存至 {self.quant_service.save_path}")
+        print(f"量化模型已保存至 {self.quant_service.quant_params.save_path}")
 
 

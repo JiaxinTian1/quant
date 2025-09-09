@@ -102,7 +102,8 @@ class FP8INT4Quantizer(BaseQuantizer):
                 self.register_params(layer, "input_scale", self.quant_info["activation"]["scale"].squeeze(-1))
     
     def dequant_fp8_tensor(self, layer):
-        dequant_scaler = ScalerFactory.create(True, "bf16", "fp8_e4m3")
+        weight_original_dtype = self.strategy["weight"]["original_dtype"]
+        dequant_scaler = ScalerFactory.create(True, weight_original_dtype, "fp8_e4m3")
         dequant_reshaper = ReshaperFactory.create('block')
         tensor_to_dequant = layer.weight.data
         if hasattr(layer, 'weight_scale_inv'):

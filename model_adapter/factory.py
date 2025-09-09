@@ -17,9 +17,9 @@ class ModelAdapterFactory:
         Returns:
             模型适配器实例
         """
-        if model_type == "qwen3":
+        if model_type == "qwen3_moe":
             return Qwen3Model(model_path, save_path, dist_ctx)
-        elif model_type == "deepseekv3":
+        elif model_type == "deepseek_v3":
             return DSV3Model(model_path, save_path, dist_ctx)
         else:
             raise ValueError(f"不支持的模型类型: {model_type}")

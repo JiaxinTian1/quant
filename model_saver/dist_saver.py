@@ -19,7 +19,6 @@ class DistSaver(BaseSaver):
         self.dist_ctx = quant_service.dist_ctx
         self.rank = self.dist_ctx.rank
         self.world_size = self.dist_ctx.world_size
-        self.save_path = quant_service.save_path  # 直接使用最终保存目录
         self.local_map = {}
         
         # 确保保存目录存在
