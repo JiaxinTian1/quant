@@ -16,16 +16,6 @@ global:
       is_sym: True
   
 local:
-  self_attn:
-    weight:
-      enable: True
-      target_dtype: int8  
-      calibrator: "minmax"  
-      granularity: "channel"  
 
 disable:
-  ["*lm_head*"]
-
-max_layers_per_subgraph: 5
-
-is_training: False
+  ["lm_head", "norm", "embed_tokens"]

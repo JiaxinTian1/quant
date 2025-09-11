@@ -38,8 +38,7 @@ class BaseQuantizer():
         pass
     
     def to(self, device):
-        self.weight_calibrator.to(device)
-        self.act_calibrator.to(device)
+        pass
     
     def register_params(self, layer, name, tensor):
         with torch.no_grad():
@@ -63,17 +62,11 @@ class BaseQuantizer():
 class FP8INT4Quantizer(BaseQuantizer):
     def __init__(self, strategy):
         super().__init__(strategy)
-        self.weight_scale_name = None
     
     def calibrate(self, input_tensor, weight_tensor):
         self.act_calibrator.collect(input_tensor)
     
     def quantize(self, layer):
-        if hasattr(layer, 'weight_scale_inv'):
-            self.weight_scale_name = 'weight_scale_inv'
-        else:
-            self.weight_scale_name = 'scale'
-        
         tensor_to_quant = self.dequant_fp8_tensor(layer)
         self.weight_calibrator.collect(tensor_to_quant)
         self.quant_info = self.compute_params()
@@ -82,12 +75,83 @@ class FP8INT4Quantizer(BaseQuantizer):
             self.quant_weight = self.pack_int4(self.quant_weight)
         self._register(layer)
     
+    # def compute_params(self):
+    #     """直接返回校准器计算的参数（无额外调整）"""
+    #     return {
+    #         "activation": self.act_calibrator.compute_params(),
+    #         "weight": self.weight_calibrator.compute_params()
+    #     }
+
+    # def compute_params(self):
+    #     import copy
+    #     current_granularity = self.strategy["activation"]["granularity"]
+    #     if current_granularity not in ["tensor"]:
+    #         raise NotImplementedError(f"不支持的粒度级别: {current_granularity}。")
+        
+    #     act_params = self.act_calibrator.compute_params()
+    #     weight_params = self.weight_calibrator.compute_params()
+    #     if act_params is None or weight_params is None:
+    #         return {
+    #             "activation": act_params,
+    #             "weight": weight_params
+    #         }
+    #     act_amax = torch.max(torch.abs(self.act_calibrator.max), torch.abs(self.act_calibrator.min))
+    #     weight_amax = torch.max(torch.abs(self.weight_calibrator.max), torch.abs(self.weight_calibrator.min))
+        
+    #     eps = 1e-8
+    #     alpha = 0.5
+
+    #     # 使用weight_amax的平均值替代原来的s_group平均值
+    #     weight_amax_max = torch.mean(weight_amax)
+    #     # 或者使用weight_amax的最大值
+    #     # weight_amax_max = torch.max(weight_amax)
+    #     s_group = (act_amax ** alpha) / ((weight_amax_max + eps) ** (1 - alpha))
+    #     print(self.act_calibrator.max)
+    #     print(self.act_calibrator.min)
+    #     self.act_calibrator.max /= (s_group + eps)
+    #     self.act_calibrator.min /= (s_group + eps)
+    #     self.weight_calibrator.max *= (s_group + eps)
+    #     self.weight_calibrator.min *= (s_group + eps)
+        
+    #     breakpoint()
+    #     return {
+    #         "activation": self.act_calibrator.compute_params(),
+    #         "weight": self.weight_calibrator.compute_params()
+    #     }
+    
     def compute_params(self):
-        """直接返回校准器计算的参数（无额外调整）"""
-        return {
-            "activation": self.act_calibrator.compute_params(),
-            "weight": self.weight_calibrator.compute_params()
-        }
+        current_granularity = self.strategy["activation"]["granularity"]
+        if current_granularity not in ["tensor"]:
+            raise NotImplementedError(f"不支持的粒度级别: {current_granularity}。")
+        
+        act_params = self.act_calibrator.compute_params()
+        weight_params = self.weight_calibrator.compute_params()
+        if act_params is None or weight_params is None:
+            return {
+                "activation": act_params,
+                "weight": weight_params
+            }
+        act_amax = torch.max(torch.abs(self.act_calibrator.max), torch.abs(self.act_calibrator.min))
+        weight_amax = torch.max(torch.abs(self.weight_calibrator.max), torch.abs(self.weight_calibrator.min))
+        
+        eps = 1e-8
+        alpha = 0.5
+
+        # 使用weight_amax的平均值替代原来的s_group平均值
+        weight_amax_max = torch.max(weight_amax)
+        # 或者使用weight_amax的最大值
+        # weight_amax_max = torch.max(weight_amax)
+        s_group = (act_amax ** alpha) / ((weight_amax_max + eps) ** (1 - alpha))
+
+        adjusted_act = act_params.copy()
+        adjusted_act["scale"] /= (s_group  + eps)
+
+        adjusted_weight = weight_params.copy()
+        adjusted_weight["scale"] *= (s_group  + eps)
+        # breakpoint()
+        return {"activation": adjusted_act, "weight": adjusted_weight}
+        
+
     
     
     def _register(self, layer):
@@ -134,18 +198,51 @@ class BF16FP8Quantizer(BaseQuantizer):
 
     def quantize(self, layer):
         tensor_to_quant = layer.weight.data
-
+        print(self.tensor_name)
+        print(tensor_to_quant.shape)
         self.weight_calibrator.collect(tensor_to_quant)
         self.quant_info = self.compute_params()
         self.quant_weight = self.weight_calibrator.quantize(tensor_to_quant, self.quant_info['weight'])
         self._register(layer)
     
+    # def compute_params(self):
+    #     """直接返回校准器计算的参数（无额外调整）"""
+    #     return {
+    #         "activation": self.act_calibrator.compute_params(),
+    #         "weight": self.weight_calibrator.compute_params()
+    #     }
+    
     def compute_params(self):
-        """直接返回校准器计算的参数（无额外调整）"""
-        return {
-            "activation": self.act_calibrator.compute_params(),
-            "weight": self.weight_calibrator.compute_params()
-        }
+        current_granularity = self.strategy["activation"]["granularity"]
+        if current_granularity not in ["tensor"]:
+            raise NotImplementedError(f"不支持的粒度级别: {current_granularity}。")
+        
+        act_params = self.act_calibrator.compute_params()
+        weight_params = self.weight_calibrator.compute_params()
+        if act_params is None or weight_params is None:
+            return {
+                "activation": act_params,
+                "weight": weight_params
+            }
+        act_amax = torch.max(torch.abs(self.act_calibrator.max), torch.abs(self.act_calibrator.min))
+        weight_amax = torch.max(torch.abs(self.weight_calibrator.max), torch.abs(self.weight_calibrator.min))
+        
+        eps = 1e-8
+        alpha = 0.5
+
+        # 使用weight_amax的平均值替代原来的s_group平均值
+        weight_amax_max = torch.mean(weight_amax)
+        # 或者使用weight_amax的最大值
+        # weight_amax_max = torch.max(weight_amax)
+        s_group = (act_amax ** alpha) / ((weight_amax_max + eps) ** (1 - alpha))
+
+        adjusted_act = act_params.copy()
+        adjusted_act["scale"] /= (s_group ** alpha + eps)
+
+        adjusted_weight = weight_params.copy()
+        adjusted_weight["scale"] *= (s_group ** (1 - alpha) + eps)
+        # breakpoint()
+        return {"activation": adjusted_act, "weight": adjusted_weight}
     
     def _register(self, layer):
         if self.strategy["weight"]["enable"]:
@@ -155,5 +252,37 @@ class BF16FP8Quantizer(BaseQuantizer):
             self.register_params(layer, "input_scale", self.quant_info["activation"]["scale"].squeeze(-1))
 
 
+class UniversalQuantizer(BaseQuantizer):
+    def __init__(self, strategy):
+        super().__init__(strategy)
+        self.algorithm = None  # 量化算法（minmax/awq等）
+        self.method = None        # 量化方法（FP8INT4等）
+        self.initiate_quantizer()
     
+    def initiate_quantizer(self):
+        algo = self.strategy.get("algorithm")
+        meth = self.strategy.get("quant_type")
+        self.algorithm = QuantAlgorithmFactory.create(algo)
+        self.method = QuantMethodactory(meth)
+    
+    def calibrate(self, input_tensor, weight_tensor):
+        # 校准逻辑委托给算法
+        self.algorithm.calibrate(input_tensor, weight_tensor)
+    
+    def quantize(self, layer):
+        # 1. 权重预处理（委托给方法）
+        tensor_to_quant = self.method.preprocess_quant(layer)
+        
+        # 2. 计算量化参数（委托给算法）
+        self.quant_info = self.algorithm.compute_params()
+        
+        # 3. 权重量化（委托给算法）
+        quant_results = self.algorithm.quantize(
+            input_tensor=input_tensor,
+            weight_tensor=tensor_to_quant,
+            quant_params=self.quant_info
+        )
+        
+        # 4. 注册参数（委托给方法）
+        self.method.postprocess_quant(layer, quant_results, self.quant_info)
     

@@ -56,8 +56,6 @@ class MinMaxCalibrator(BaseCalibrator):
         self.min = None
         self.initiate_calibrator()
     
-    def to(self, device):
-        pass
 
     def initiate_calibrator(self):
         self.initiated = True
@@ -80,11 +78,6 @@ class MinMaxCalibrator(BaseCalibrator):
         current_min, current_max = self._get_tensor_feature(reshaped_tensor)
 
         # 更新统计信息
-
-        # print(self.min)
-        # print(self.min.shape) 
-        # print(current_min)
-
         self.min = torch.min(self.min, current_min) if self.min is not None else current_min
         self.max = torch.max(self.max, current_max) if self.max is not None else current_max
         self.collected = True
@@ -101,12 +94,7 @@ class MinMaxCalibrator(BaseCalibrator):
     def quantize(self, tensor, params):
         if not self.enable:
             return 
-        # print(tensor.shape)
-        # print(self.reshaper)
         reshaped_tensor = self.reshaper.reshape(tensor)
-        # print(reshaped_tensor.shape)
-        # print(self.scaler.params["scale"].shape)
-        # print(self.scaler.params["offset"].shape)
         
         quant_weight = self.scaler.quantize(reshaped_tensor.float(), params)
         return self.reshaper.unreshape(quant_weight)
@@ -114,12 +102,7 @@ class MinMaxCalibrator(BaseCalibrator):
     def dequantize(self, tensor, params):
         if not self.enable:
             return 
-        # print(tensor.shape)
-        # print(self.reshaper)
         reshaped_tensor = self.reshaper.reshape(tensor)
-        # print(reshaped_tensor.shape)
-        # print(self.scaler.params["scale"].shape)
-        # print(self.scaler.params["offset"].shape)
         
         dequant_weight = self.scaler.dequantize(reshaped_tensor.float(), params)
         return self.reshaper.unreshape(dequant_weight)
@@ -127,17 +110,6 @@ class MinMaxCalibrator(BaseCalibrator):
     def _get_tensor_feature(self, tensor):
         current_min = tensor.float().amin(dim=(-1), keepdim=True)
         current_max = tensor.float().amax(dim=(-1), keepdim=True)
-        # if self.tensor_type == 'weight':
-        #     current_min = tensor.float().amin(dim=(-1), keepdim=True)
-        #     current_max = tensor.float().amax(dim=(-1), keepdim=True)
-        # elif self.tensor_type == 'activation':
-        #     # 获取所有维度的索引
-        #     all_dims = tuple(range(tensor.dim()))
-        #     # 排除-2维度（倒数第二维）
-        #     dims_to_reduce = self._get_reduce_dims(all_dims, self.scaler.dims_to_keep)
-        #     current_min = tensor.amin(dim=dims_to_reduce).amin(dim=(-1), keepdim=True)
-        #     current_max = tensor.amax(dim=dims_to_reduce).amax(dim=(-1), keepdim=True)
-        # breakpoint()
         return (current_min, current_max)
     
 

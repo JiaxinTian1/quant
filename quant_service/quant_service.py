@@ -159,7 +159,6 @@ class ConfigProcessor(BaseProcessor):
             )
             print("使用默认量化配置")
         
-        
         self.quant_service.quant_config["quant_type"] = self.quant_service.quant_params.quant_type
         self.quant_service.quant_config["original_dtype"] = self.quant_service.original_dtype
         

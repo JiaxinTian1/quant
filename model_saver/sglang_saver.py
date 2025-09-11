@@ -27,9 +27,10 @@ class SglangSaver(BaseSaver):
         self.save_state_dict_with_index(model_state_dict)
         self.save_weight_map()
         # 保存配置、分词器和量化参数
+        self.warpped_model.copy_files()
         self.save_quantization_config()
         self.save_hf_quant_config()
-        self.warpped_model.copy_files()
+        
         # self.quant_service.tokenizer.save_pretrained(self.save_path)
     
     def _process_state_dict(self, state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -133,7 +134,7 @@ class SglangFP8Saver(SglangSaver):
     
     def save_quantization_config(self):
         # 1. 读取原始 config.json
-        config_path = os.path.join(self.save_path, "config.json")
+        config_path = os.path.join(self.model_path, "config.json")
         with open(config_path, 'r', encoding='utf-8') as f:
             config: Dict[str, Any] = json.load(f)
         

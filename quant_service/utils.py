@@ -130,6 +130,8 @@ class StrategyParser:
 
     def _apply_local_overrides(self, tensor_name: str, strategy: Dict[str, Any]) -> None:
         """用局部配置覆盖全局配置"""
+        if self.local_cfg is None:
+            return
         for pattern, local_settings in self.local_cfg.items():
             if pattern in tensor_name:
                 if "weight" in local_settings:

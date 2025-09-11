@@ -17,7 +17,7 @@ class ModelAdapterFactory:
         Returns:
             模型适配器实例
         """
-        if model_type == "qwen3_moe":
+        if model_type in ["qwen3_moe", "qwen3"]:
             return Qwen3Model(model_path, save_path, dist_ctx)
         elif model_type == "deepseek_v3":
             return DSV3Model(model_path, save_path, dist_ctx)
