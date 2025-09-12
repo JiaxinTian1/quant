@@ -54,6 +54,7 @@ class QuantService:
         self.layer_quantizers = {}
         self.quantized_layers = {}  # 已量化的层（tensor_name -> QuantModule）
         self.hook_manager = None
+        self.need_preprocess = False
         
         # 类型信息
         self.original_dtype = None
@@ -68,21 +69,28 @@ class QuantService:
             "quantization": QuantizationProcessor(self),
             "save": SaveProcessor(self)
         }
-
-    def run_pipeline(self) -> None:
-        """执行完整量化流程：分离分布式加载与主进程量化步骤"""
-
-        # 后续步骤：仅主进程执行核心量化逻辑，其他进程等待
-        pipeline_steps = [
+        self.pre_steps = [
             ("load", {}),
             ("config", {}),
             ("init", {}),
             ("subgraph", {}),
-            ("calibration", {}),
-            ("quantization", {}),
-            ("save", {})
         ]
 
+        self.quant_steps = [
+            ("calibration", {}),
+            ("quantization", {}),
+        ]
+        self.post_steps = [("save", {})]
+    
+    def service(self):
+        self.run_pipeline(self.pre_steps)
+        self.run_pipeline(self.quant_steps)
+        self.run_pipeline(self.post_steps)
+
+    def run_pipeline(self, pipeline_steps) -> None:
+        """执行完整量化流程：分离分布式加载与主进程量化步骤"""
+
+        # 后续步骤：仅主进程执行核心量化逻辑，其他进程等待
         for step_name, kwargs in pipeline_steps:
             # 仅主进程执行量化步骤
             if self.dist_ctx.is_main_process():
@@ -92,11 +100,14 @@ class QuantService:
             # 同步点：确保所有进程在同一步骤对齐
             self.dist_ctx.barrier()
 
+    
+    def build_quant_pipline(self):
+        pass
+
+    def __del__(self):
         # 流程结束：仅主进程打印总结
         if self.dist_ctx.is_main_process():
             print("完整量化流程执行完毕")
-        
-    def __del__(self):
         # 仅在分布式环境已初始化时关闭
         if dist.is_initialized():
             dist.destroy_process_group()
@@ -275,9 +286,11 @@ class SubgraphProcessor(BaseProcessor):
             # print(f"原始权重设备: {layer.weight.device}")
             quantizer = QuantizerFactory.create(strategy)
             self.quant_service.layer_quantizers[tensor_name] = quantizer
-            quantizer.process()
-            test_device = torch.device("cuda")
             self.quant_service.hook_manager.register_hook(layer, quantizer)
+            if strategy["need_preprocess"]:
+                self.quant_service.need_preprocess = True
+                quantizer.need_preprocess = True
+                quantizer.quant_status = "pre_calib"
 
     def _get_layer_by_path(self, layer_path: str) -> nn.Module:
         """根据路径获取层"""
@@ -300,9 +313,18 @@ class CalibrationProcessor(BaseProcessor):
     """校准处理器"""
     def process(self, **kwargs) -> None:
         self.pre_process()
+        if self.quant_service.need_preprocess:
+            self._preprocess_subgraph()
         self._calibrate_subgraph()
         
         self.post_process()
+    
+    def _preprocess_subgraph(self):
+        """预处理"""
+        self._run_calibration_forward()
+        for tensor_name, quantizer in self.quant_service.layer_quantizers.items():
+            quantizer.pre_compute()
+            quantizer.quant_status = "post_calib"
 
     def _calibrate_subgraph(self):
         """校准单个子图：为每个层创建Algorithm实例并计算参数"""

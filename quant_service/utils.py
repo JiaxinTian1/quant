@@ -107,6 +107,7 @@ class StrategyParser:
             # 基础策略（全局配置）
             strategy = {
                 "enable": False,
+                "need_preprocess": False,
                 "tensor_name": tensor_name,
                 "quant_type": self.quant_config.get("quant_type", "fp8"),
                 "weight": deepcopy(self.global_cfg.get("weight", {})),
@@ -118,8 +119,12 @@ class StrategyParser:
 
             # 应用局部配置覆盖
             self._apply_local_overrides(tensor_name, strategy)
+            
             if strategy["weight"]["enable"] or strategy["activation"]["enable"]:
                 strategy["enable"] = True
+            for algo in strategy["activation"].keys():
+                if algo in ["smoothquant"]:
+                    strategy["need_preprocess"] = True
         
         self._cache[tensor_name] = strategy
         return strategy

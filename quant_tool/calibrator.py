@@ -10,9 +10,8 @@ from .reshaper import ReshaperFactory
 
 class BaseCalibrator:
     """校准器基类"""
-    def __init__(self, tensor_type, sub_strategy):
+    def __init__(self, sub_strategy):
         self.sub_strategy = sub_strategy
-        self.tensor_type = tensor_type
         self.stats = {}
         self.enable = True
         self.initiated = False
@@ -39,19 +38,19 @@ class BaseCalibrator:
 class CalibratorFactory:
     """校准器工厂"""
     @staticmethod
-    def create(calibrator_type: str, tensor_type, sub_strategy: Dict) -> "BaseCalibrator":
+    def create(calibrator_type: str, sub_strategy: Dict) -> "BaseCalibrator":
         if calibrator_type == "minmax":
-            return MinMaxCalibrator(tensor_type, sub_strategy)
+            return MinMaxCalibrator(sub_strategy)
         elif calibrator_type == "histogram":
-            return HistogramCalibrator(tensor_type, sub_strategy)
+            return HistogramCalibrator(sub_strategy)
         else:
             raise ValueError(f"不支持的校准器类型: {calibrator_type}")
 
 
 class MinMaxCalibrator(BaseCalibrator):
     """MinMax校准器"""
-    def __init__(self, tensor_type, sub_strategy):
-        super().__init__(tensor_type, sub_strategy)
+    def __init__(self, sub_strategy):
+        super().__init__(sub_strategy)
         self.max = None
         self.min = None
         self.initiate_calibrator()

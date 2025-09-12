@@ -4,8 +4,7 @@ global:
   activation:
     enable: False
   algorithm: 
-    minmax:
-      is_sym: True
+    minmax: null
   
 local:
   mlp.experts:

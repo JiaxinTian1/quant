@@ -62,7 +62,7 @@ def main():
     # 初始化量化服务并传入参数
     quant_service = QuantService()
     quant_service.quant_params = quant_params
-    quant_service.run_pipeline()
+    quant_service.service()
     
 
 if __name__ == "__main__":

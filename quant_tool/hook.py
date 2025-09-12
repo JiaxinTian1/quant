@@ -11,9 +11,7 @@ class HookManager:
         """为层注册激活值收集Hook，将数据交给校准器"""
 
         def pre_forward_hook(module, input):
-            target_device = module.weight.device
-            # 2. 将quantizer移至目标设备（假设quantizer有to方法）
-            quantizer.to(target_device)
+            pass
 
         # 注册pre_forward_hook（在层forward前完成所有设备同步）
         pre_handle = layer.register_forward_pre_hook(pre_forward_hook)
@@ -22,9 +20,8 @@ class HookManager:
         def forward_hook(module, input, output):
             # 通常激活值是层的输出（根据层类型调整，这里以output为例）
             input_tensor = input if isinstance(input, torch.Tensor) else input[0]
-            weight_tensor = module.weight.data
             # breakpoint()
-            quantizer.calibrate(input_tensor, weight_tensor)
+            quantizer.calibrate(input_tensor, module)
 
         # 注册前向Hook（推荐用forward_hook而非pre_hook，因为激活值通常是输出）
         handle = layer.register_forward_hook(forward_hook)

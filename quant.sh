@@ -38,5 +38,5 @@ python3 main.py \
 #     --save_path "$save_path" \
 #     --quant_type "$quant_type" \
 #     --quant_target "$quant_target" \
-#     --quant_config_path "$quant_config_path" \
 #     --calib_data_path "$calib_path"
+#     --quant_config_path "$quant_config_path" \
